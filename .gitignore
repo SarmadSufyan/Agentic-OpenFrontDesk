@@ -1,0 +1,47 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# --- Env & secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Data / models / uploads ---
+/data/
+/uploads/
+/recordings/
+*.sqlite3
+*.db
+models_cache/
+.fastembed_cache/
+
+# --- Node / dashboard ---
+node_modules/
+.next/
+apps/dashboard/.env.local
+apps/dashboard/out/
+
+# --- Tooling ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,11 @@
+id: faq-hours
+vertical: dental
+persona: "Prospective patient checking if they can come in"
+goal: "Find out what days and hours the clinic is open"
+script_hints:
+  - "Ask if they're open on Saturday"
+expected:
+  outcome: answered
+  assertions:
+    - "Agent uses the knowledge base for the hours"
+    - "Agent states the correct opening hours, not a guess"

@@ -1,0 +1,73 @@
+# OpenFrontDesk — local & self-host stack. See docs/11-deployment.md.
+# Dev shortcut:   docker compose up -d db redis   (then run `ofd-api` on the host)
+# Full API:       docker compose up -d db redis api
+# With free TTS:  docker compose --profile tts up -d kokoro
+# Agent (P1+):    docker compose --profile agent up -d agent
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ofd}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ofd}
+      POSTGRES_DB: ${POSTGRES_DB:-openfrontdesk}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ofd} -d ${POSTGRES_DB:-openfrontdesk}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"   # host port configurable; container stays 8000
+
+  # Free self-hosted TTS (OpenAI-compatible). Verify the image tag for your platform.
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    profiles: ["tts"]
+    ports:
+      - "8880:8880"
+
+  # Voice worker — implemented in Phase 1.
+  agent:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.agent
+    profiles: ["agent"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+      KOKORO_BASE_URL: http://kokoro:8880   # reach the TTS container by service name
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  pgdata:

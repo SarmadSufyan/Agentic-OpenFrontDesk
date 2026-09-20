@@ -1,0 +1,55 @@
+# 15 — API Reference
+
+REST + JSON. Auth via `Authorization: Bearer <jwt>`. Interactive OpenAPI at `/docs` (Swagger) and
+`/redoc`. All non-auth routes are tenant-scoped by the token's active tenant. This lists the v1 surface;
+✅ = implemented, ⬜ = planned (phase noted).
+
+## Health
+- `GET /health` — liveness ✅ (P0)
+- `GET /health?deep=1` — DB + Redis readiness ⬜ (P0)
+
+## Auth  (P3)
+- `POST /auth/signup` — create user + first tenant ⬜
+- `POST /auth/login` — issue access + refresh ⬜
+- `POST /auth/refresh` — rotate tokens ⬜
+- `GET  /auth/me` — current user + memberships ⬜
+
+## Tenants  (P3)
+- `GET/PATCH /tenants/current` — profile, hours, timezone, settings ⬜
+- `POST /tenants/switch` — change active tenant ⬜
+- `POST /tenants/current/members` — invite ⬜
+
+## Agents  (P2/P3)
+- `GET/PUT /agents/current` — voice, greeting, persona, escalation & booking rules ⬜
+
+## Knowledge  (P2)
+- `POST /knowledge` — upload file / paste text / submit URL → ingestion job ⬜
+- `GET  /knowledge` — list docs + status ⬜
+- `POST /knowledge/{id}/reindex` — re-run ingestion ⬜
+- `DELETE /knowledge/{id}` — remove doc + chunks ⬜
+- `GET  /knowledge/search?q=` — debug retrieval (test console) ⬜
+
+## Calls  (P2/P3)
+- `GET /calls` — list (filters: outcome, date) ⬜
+- `GET /calls/{id}` — detail: transcript, tool trace, recording, latency, cost ⬜
+
+## Bookings & Leads  (P2/P3)
+- `GET /bookings` · `GET /leads` — list/export ⬜
+
+## Analytics  (P3)
+- `GET /analytics/overview` — KPIs (calls, bookings, deflection, minutes, latency) ⬜
+
+## LiveKit / Voice  (P1)
+- `GET /livekit/token?room=test` — mint a scoped browser-test token ⬜
+
+## Integrations  (P2/P3)
+- `POST /integrations/{type}` — connect Cal.com / Google / SMS / CRM ⬜
+- `GET  /integrations` — list (secrets never returned) ⬜
+
+## Webhooks  (P2/P4)
+- `POST /webhooks/telephony` — inbound call/SIP events ⬜
+- `POST /webhooks/calcom` — booking sync ⬜
+
+## Conventions
+- Errors: JSON problem shape `{ "error": { "code", "message", "details" } }`.
+- Pagination: `?limit=&cursor=`. Timestamps ISO-8601 UTC. IDs are UUIDs.

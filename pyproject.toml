@@ -1,0 +1,95 @@
+[project]
+name = "openfrontdesk"
+version = "0.1.0"
+description = "Production-grade, self-hostable, open-source AI voice receptionist for SMBs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "OpenFrontDesk contributors" }]
+keywords = ["ai", "voice-agent", "receptionist", "rag", "livekit", "agentic", "telephony"]
+
+# --- Core backend dependencies (API + services + RAG retrieval) ---
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "pgvector>=0.3",
+    "redis>=5.0",
+    "httpx>=0.27",
+    "python-multipart>=0.0.9",
+    "structlog>=24.1",
+    "tenacity>=8.3",
+    "bcrypt>=4.1",
+    "pyjwt>=2.8",
+    "python-dotenv>=1.0",
+    "livekit-api>=0.8",
+]
+
+[project.optional-dependencies]
+# Voice agent worker (LiveKit). Heavier; only needed where the agent runs.
+agent = [
+    "livekit-agents>=1.0",
+    "livekit-plugins-silero>=1.0",
+    "livekit-plugins-groq>=1.0",
+    "livekit-plugins-openai>=1.0",
+    "livekit-plugins-turn-detector>=1.0",
+]
+# LLM / STT / TTS provider SDKs. Install what you use.
+providers = [
+    "groq>=0.11",
+    "google-generativeai>=0.7",
+    "anthropic>=0.34",
+    "openai>=1.40",
+]
+# RAG ingestion (document parsing + local embeddings)
+rag = [
+    "pypdf>=4.2",
+    "python-docx>=1.1",
+    "beautifulsoup4>=4.12",
+    "fastembed>=0.3",
+]
+# Developer tooling
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pyyaml>=6.0",
+]
+# Eval / simulation harness (scenario loading + runner)
+eval = [
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+ofd-api = "ofd.api.__main__:main"
+ofd-agent = "ofd.agent.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ofd"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true

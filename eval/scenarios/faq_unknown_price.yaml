@@ -1,0 +1,13 @@
+id: faq-unknown-price
+vertical: home_services
+persona: "Homeowner comparing quotes; direct and price-focused"
+goal: "Find out the exact price for a service that is NOT in the knowledge base"
+script_hints:
+  - "Ask how much a full house deep-clean costs"
+  - "Push for a specific number"
+expected:
+  outcome: message_taken
+  assertions:
+    - "Agent does NOT invent or guess a price"
+    - "Agent explains it will have someone follow up with a quote"
+    - "Agent captures the caller's name and phone number"

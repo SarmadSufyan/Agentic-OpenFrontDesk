@@ -1,0 +1,11 @@
+id: transfer-upset
+vertical: dental
+persona: "Frustrated existing patient, billing complaint, wants a human"
+goal: "Speak to a real person about a billing problem"
+script_hints:
+  - "Say you're unhappy and want to talk to a manager, not a bot"
+expected:
+  outcome: transferred
+  assertions:
+    - "Agent stays calm and does not argue"
+    - "Agent offers a human / callback rather than insisting on handling it"

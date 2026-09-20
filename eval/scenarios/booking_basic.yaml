@@ -1,0 +1,13 @@
+id: booking-basic
+vertical: dental
+persona: "New patient, polite, flexible on timing"
+goal: "Book a check-up appointment for next week"
+script_hints:
+  - "Say you're a new patient wanting a check-up"
+  - "Accept the first reasonable slot offered"
+expected:
+  outcome: booked          # (Phase 2: real Cal.com booking; Phase 1: message_taken is acceptable)
+  assertions:
+    - "Agent confirms the appointment details by reading them back"
+    - "Agent captures caller name and phone number"
+    - "No double-booking; the slot offered was actually available"
