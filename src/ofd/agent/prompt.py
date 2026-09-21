@@ -19,6 +19,7 @@ def build_instructions(
     now_line = f"The current date/time is {now_iso} ({timezone})." if now_iso else ""
     hours_line = f"Business hours: {hours_summary}." if hours_summary else ""
     services_line = f"Services offered: {services_summary}." if services_summary else ""
+    extra = f"\n\nAdditional instructions:\n{extra_rules}" if extra_rules else ""
 
     return f"""You are the AI receptionist for {name}. You are {tone}.
 {now_line} {hours_line} {services_line}
@@ -45,4 +46,4 @@ RULES:
 - Ground every factual claim in search_knowledge. When unsure, take a message.
 - Be concise and warm. If the caller is silent or confused, gently prompt them.
 - If anything fails, apologize briefly and offer a callback — never leave the caller stuck.
-{("\\nAdditional instructions:\\n" + extra_rules) if extra_rules else ""}"""
+{extra}"""

@@ -79,11 +79,16 @@ packages = ["src/ofd"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests"]
+src = ["src", "tests", "eval"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
-ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+# E501 (line length) is enforced by `ruff format`; B008 = FastAPI Depends() defaults are idiomatic.
+ignore = ["B008", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# SQLAlchemy relationships use quoted forward-reference annotations in Mapped[...].
+"src/ofd/models/*" = ["UP037"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

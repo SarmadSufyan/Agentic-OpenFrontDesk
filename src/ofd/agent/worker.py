@@ -62,13 +62,24 @@ def _extract_transcript(session: object) -> list:
         pass
     return out
 
-_DAY_NAMES = {"mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat", "sun": "Sun"}
+
+_DAY_NAMES = {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun",
+}
 
 
 def _hours_summary(business_hours: dict | None) -> str | None:
     if not business_hours:
         return None
-    return ", ".join(f"{_DAY_NAMES.get(d, d)} {v[0]}-{v[1]}" for d, v in business_hours.items() if v)
+    return ", ".join(
+        f"{_DAY_NAMES.get(d, d)} {v[0]}-{v[1]}" for d, v in business_hours.items() if v
+    )
 
 
 async def _resolve_config(metadata: str | None) -> dict:

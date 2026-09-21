@@ -34,11 +34,13 @@ async def _tenant_metadata(tenant_slug: str) -> str | None:
     """Best-effort JSON metadata {tenant_id, agent_id} so the agent knows which business to be."""
     try:
         async with session_scope() as db:
-            tenant, agent = await tenants_svc.get_context(
-                db, tenant_id=None, agent_id=None
-            ) if tenant_slug == "demo" else (
-                await tenants_svc.get_tenant_by_slug(db, tenant_slug),
-                None,
+            tenant, agent = (
+                await tenants_svc.get_context(db, tenant_id=None, agent_id=None)
+                if tenant_slug == "demo"
+                else (
+                    await tenants_svc.get_tenant_by_slug(db, tenant_slug),
+                    None,
+                )
             )
             if tenant is None:
                 return None
@@ -82,4 +84,6 @@ async def create_token(
     )
     if metadata:
         builder = builder.with_metadata(metadata)
-    return TokenResponse(url=settings.LIVEKIT_URL, token=builder.to_jwt(), room=room, identity=ident)
+    return TokenResponse(
+        url=settings.LIVEKIT_URL, token=builder.to_jwt(), room=room, identity=ident
+    )

@@ -44,7 +44,9 @@ async def get_call(
 
 
 @router.get("/bookings", response_model=list[BookingOut])
-async def list_bookings(ctx: AuthContext = Depends(get_context), db: AsyncSession = Depends(get_db)):
+async def list_bookings(
+    ctx: AuthContext = Depends(get_context), db: AsyncSession = Depends(get_db)
+):
     return await booking_svc.list_bookings(db, tenant_id=ctx.tenant.id)
 
 

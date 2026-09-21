@@ -75,7 +75,9 @@ class FrontDeskAgent(Agent):
                 )
             if not slots:
                 return "No open slots found in that range; offer to take a message for a callback."
-            return "Available slots: " + "; ".join(s.start.strftime("%A %b %d at %I:%M %p") for s in slots)
+            return "Available slots: " + "; ".join(
+                s.start.strftime("%A %b %d at %I:%M %p") for s in slots
+            )
         except Exception as exc:
             logger.warning("tool_availability_failed", error=str(exc))
             return "Could not check availability; offer to take a message."
@@ -121,9 +123,7 @@ class FrontDeskAgent(Agent):
 
     # --- messages / escalation ----------------------------------------------
     @function_tool
-    async def take_message(
-        self, context: RunContext, name: str, phone: str, message: str
-    ) -> str:
+    async def take_message(self, context: RunContext, name: str, phone: str, message: str) -> str:
         """Capture a message/lead when you can't fully help. Collect name, phone, and the message."""
         return await self._capture(name=name, phone=phone, message=message, intent="message")
 

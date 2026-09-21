@@ -89,9 +89,7 @@ class LLMProvider(Protocol):
 class TTSProvider(Protocol):
     name: str
 
-    def synthesize_stream(
-        self, text: str, *, voice: str | None = None
-    ) -> AsyncIterator[bytes]: ...
+    def synthesize_stream(self, text: str, *, voice: str | None = None) -> AsyncIterator[bytes]: ...
 
 
 @runtime_checkable

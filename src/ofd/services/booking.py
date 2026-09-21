@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -79,7 +79,7 @@ async def check_availability(
 ) -> list[Slot]:
     tz = _tz(tenant)
     now = datetime.now(tz)
-    day0 = (on_date.astimezone(tz).date() if on_date else now.date())
+    day0 = on_date.astimezone(tz).date() if on_date else now.date()
     out: list[Slot] = []
 
     for offset in range(0, horizon_days):
@@ -117,7 +117,7 @@ async def book(
     tz = _tz(tenant)
     if start_at.tzinfo is None:
         start_at = start_at.replace(tzinfo=tz)
-    if start_at <= datetime.now(timezone.utc):
+    if start_at <= datetime.now(UTC):
         raise ValidationError("Requested time is in the past")
 
     end_at = start_at + timedelta(minutes=slot_minutes)
@@ -165,7 +165,9 @@ async def cancel(db: AsyncSession, tenant_id: uuid.UUID, booking_id: uuid.UUID) 
     return booking
 
 
-async def list_bookings(db: AsyncSession, *, tenant_id: uuid.UUID, limit: int = 100) -> list[Booking]:
+async def list_bookings(
+    db: AsyncSession, *, tenant_id: uuid.UUID, limit: int = 100
+) -> list[Booking]:
     stmt = (
         select(Booking)
         .where(Booking.tenant_id == tenant_id)

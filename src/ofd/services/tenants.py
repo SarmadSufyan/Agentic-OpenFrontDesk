@@ -56,7 +56,14 @@ async def get_context(
 
 _TENANT_FIELDS = {"name", "vertical", "timezone", "business_hours", "address", "settings"}
 _AGENT_FIELDS = {
-    "name", "voice", "greeting", "tone", "persona", "escalation_rules", "booking_rules", "is_active",
+    "name",
+    "voice",
+    "greeting",
+    "tone",
+    "persona",
+    "escalation_rules",
+    "booking_rules",
+    "is_active",
 }
 
 

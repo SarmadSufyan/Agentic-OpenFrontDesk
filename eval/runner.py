@@ -11,10 +11,10 @@ our own provider abstraction, so it stays provider-agnostic. Imports are lazy wh
 from __future__ import annotations
 
 import time
-import uuid
 
 from eval.schema import Scenario
 from eval.scorers import RunResult, score_all
+
 from ofd.agent.prompt import build_instructions
 from ofd.providers.base import Message, ToolSpec
 from ofd.providers.registry import get_llm
@@ -22,20 +22,54 @@ from ofd.providers.registry import get_llm
 MAX_TURNS = 8
 
 TOOL_SPECS = [
-    ToolSpec("search_knowledge", "Look up facts about services, prices, hours, policies, location.",
-             {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}),
-    ToolSpec("check_availability", "Find open appointment slots.",
-             {"type": "object", "properties": {"service": {"type": "string"},
-              "on_date": {"type": "string", "description": "ISO date YYYY-MM-DD"}}}),
-    ToolSpec("book_appointment", "Book an appointment once the caller agrees to a time.",
-             {"type": "object", "properties": {"customer_name": {"type": "string"},
-              "phone": {"type": "string"}, "start_time": {"type": "string"}, "service": {"type": "string"}},
-              "required": ["customer_name", "phone", "start_time"]}),
-    ToolSpec("take_message", "Capture a message when you can't fully help.",
-             {"type": "object", "properties": {"name": {"type": "string"}, "phone": {"type": "string"},
-              "message": {"type": "string"}}, "required": ["name", "phone", "message"]}),
-    ToolSpec("transfer_to_human", "Use when the caller wants a person or is upset.",
-             {"type": "object", "properties": {}}),
+    ToolSpec(
+        "search_knowledge",
+        "Look up facts about services, prices, hours, policies, location.",
+        {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    ),
+    ToolSpec(
+        "check_availability",
+        "Find open appointment slots.",
+        {
+            "type": "object",
+            "properties": {
+                "service": {"type": "string"},
+                "on_date": {"type": "string", "description": "ISO date YYYY-MM-DD"},
+            },
+        },
+    ),
+    ToolSpec(
+        "book_appointment",
+        "Book an appointment once the caller agrees to a time.",
+        {
+            "type": "object",
+            "properties": {
+                "customer_name": {"type": "string"},
+                "phone": {"type": "string"},
+                "start_time": {"type": "string"},
+                "service": {"type": "string"},
+            },
+            "required": ["customer_name", "phone", "start_time"],
+        },
+    ),
+    ToolSpec(
+        "take_message",
+        "Capture a message when you can't fully help.",
+        {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "phone": {"type": "string"},
+                "message": {"type": "string"},
+            },
+            "required": ["name", "phone", "message"],
+        },
+    ),
+    ToolSpec(
+        "transfer_to_human",
+        "Use when the caller wants a person or is upset.",
+        {"type": "object", "properties": {}},
+    ),
 ]
 
 
@@ -52,7 +86,9 @@ async def _dispatch(name: str, args: dict, *, tenant, slot_minutes: int, r: RunR
     try:
         if name == "search_knowledge":
             async with session_scope() as db:
-                hits = await knowledge_svc.search(db, tenant_id=tenant.id, query=args.get("query", ""))
+                hits = await knowledge_svc.search(
+                    db, tenant_id=tenant.id, query=args.get("query", "")
+                )
             if not hits:
                 r.knowledge_empty += 1
                 return "NO_RESULTS"
@@ -60,18 +96,33 @@ async def _dispatch(name: str, args: dict, *, tenant, slot_minutes: int, r: RunR
             return retrieve.format_context(hits)
         if name == "check_availability":
             async with session_scope() as db:
-                slots = await booking_svc.check_availability(db, tenant, service=args.get("service"), slot_minutes=slot_minutes)
+                slots = await booking_svc.check_availability(
+                    db, tenant, service=args.get("service"), slot_minutes=slot_minutes
+                )
             return "; ".join(s.start.strftime("%A %b %d %I:%M %p") for s in slots) or "No slots"
         if name == "book_appointment":
             start = datetime.fromisoformat(args["start_time"])
             async with session_scope() as db:
-                bk = await booking_svc.book(db, tenant, name=args["customer_name"], phone=args["phone"],
-                                            service=args.get("service"), start_at=start, slot_minutes=slot_minutes)
+                bk = await booking_svc.book(
+                    db,
+                    tenant,
+                    name=args["customer_name"],
+                    phone=args["phone"],
+                    service=args.get("service"),
+                    start_at=start,
+                    slot_minutes=slot_minutes,
+                )
             return f"BOOKED {bk.service} {bk.start_at.isoformat()}"
         if name == "take_message":
             async with session_scope() as db:
-                await leads_svc.capture_lead(db, tenant_id=tenant.id, name=args.get("name"),
-                                             phone=args.get("phone"), message=args.get("message"), intent="message")
+                await leads_svc.capture_lead(
+                    db,
+                    tenant_id=tenant.id,
+                    name=args.get("name"),
+                    phone=args.get("phone"),
+                    message=args.get("message"),
+                    intent="message",
+                )
             return "CAPTURED"
         if name == "transfer_to_human":
             return "TRANSFER_REQUESTED"
@@ -98,7 +149,10 @@ async def _caller_says(scenario: Scenario, transcript: list[dict]) -> str:
         "say a brief goodbye."
     )
     text, _ = await _agent_reply(
-        [Message("system", sys), Message("user", f"Conversation so far:\n{convo}\n\nYour next line:")],
+        [
+            Message("system", sys),
+            Message("user", f"Conversation so far:\n{convo}\n\nYour next line:"),
+        ],
         with_tools=False,
     )
     return text.strip() or "Hello?"
@@ -114,16 +168,28 @@ async def run_scenario_text(scenario: Scenario, *, tenant, slot_minutes: int = 3
             caller = await _caller_says(scenario, r.transcript)
             r.transcript.append({"role": "user", "text": caller})
             messages.append(Message("user", caller))
-            if any(w in caller.lower() for w in ("goodbye", "bye", "thanks, that's all", "thank you, bye")):
+            if any(
+                w in caller.lower()
+                for w in ("goodbye", "bye", "thanks, that's all", "thank you, bye")
+            ):
                 break
 
             text, tool_calls = await _agent_reply(messages, with_tools=True)
             if tool_calls:
                 summary = []
                 for tc in tool_calls:
-                    res = await _dispatch(tc.name, tc.arguments, tenant=tenant, slot_minutes=slot_minutes, r=r)
+                    res = await _dispatch(
+                        tc.name, tc.arguments, tenant=tenant, slot_minutes=slot_minutes, r=r
+                    )
                     summary.append(f"{tc.name} -> {res}")
-                messages.append(Message("system", "Tool results:\n" + "\n".join(summary) + "\nNow reply to the caller in one short line."))
+                messages.append(
+                    Message(
+                        "system",
+                        "Tool results:\n"
+                        + "\n".join(summary)
+                        + "\nNow reply to the caller in one short line.",
+                    )
+                )
                 text, _ = await _agent_reply(messages, with_tools=False)
 
             r.transcript.append({"role": "assistant", "text": text})

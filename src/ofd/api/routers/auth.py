@@ -13,8 +13,8 @@ from ofd.core.security import create_access_token, create_refresh_token, decode_
 from ofd.models.user import User
 from ofd.schemas.auth import (
     LoginIn,
-    MeOut,
     MembershipOut,
+    MeOut,
     RefreshIn,
     SignupIn,
     TokenOut,

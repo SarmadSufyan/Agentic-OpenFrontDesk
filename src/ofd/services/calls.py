@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +28,7 @@ async def start_call(
         status=CallStatus.ACTIVE,
         caller_number=caller_number,
         callee_number=callee_number,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
         transcript=[],
     )
     db.add(call)
@@ -50,7 +50,7 @@ async def finalize_call(
     if not call:
         return
     call.status = CallStatus.COMPLETED
-    call.ended_at = datetime.now(timezone.utc)
+    call.ended_at = datetime.now(UTC)
     if call.started_at:
         call.duration_seconds = max(0, int((call.ended_at - call.started_at).total_seconds()))
     if outcome:
@@ -66,11 +66,15 @@ async def finalize_call(
 
 
 async def add_event(
-    db: AsyncSession, *, tenant_id: uuid.UUID, call_id: uuid.UUID, seq: int, type: str, content: dict
+    db: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    call_id: uuid.UUID,
+    seq: int,
+    type: str,
+    content: dict,
 ) -> None:
-    db.add(
-        CallEvent(tenant_id=tenant_id, call_id=call_id, seq=seq, type=type, content=content)
-    )
+    db.add(CallEvent(tenant_id=tenant_id, call_id=call_id, seq=seq, type=type, content=content))
     await db.flush()
 
 

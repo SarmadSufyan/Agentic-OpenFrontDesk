@@ -6,7 +6,7 @@ Wired for Phase 3 auth; kept in core so both API and services can use it.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -33,7 +33,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def _now() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 def create_access_token(*, user_id: str, tenant_id: str | None, role: str | None) -> str:

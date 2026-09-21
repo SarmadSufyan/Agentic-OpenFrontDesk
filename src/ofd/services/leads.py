@@ -39,6 +39,9 @@ async def capture_lead(
 
 async def list_leads(db: AsyncSession, *, tenant_id: uuid.UUID, limit: int = 100) -> list[Lead]:
     stmt = (
-        select(Lead).where(Lead.tenant_id == tenant_id).order_by(Lead.created_at.desc()).limit(limit)
+        select(Lead)
+        .where(Lead.tenant_id == tenant_id)
+        .order_by(Lead.created_at.desc())
+        .limit(limit)
     )
     return list((await db.execute(stmt)).scalars().all())

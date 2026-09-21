@@ -40,7 +40,9 @@ def test_no_unsupported_price_flags_invented_price() -> None:
 
 def test_captured_contact_requires_name_and_phone() -> None:
     good = RunResult(
-        tool_calls=[{"name": "book_appointment", "arguments": {"customer_name": "Jo", "phone": "123"}}]
+        tool_calls=[
+            {"name": "book_appointment", "arguments": {"customer_name": "Jo", "phone": "123"}}
+        ]
     )
     assert captured_contact(_sc("booked"), good).passed is True
 

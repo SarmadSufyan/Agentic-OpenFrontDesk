@@ -47,12 +47,8 @@ class GeminiLLM:
                 ) from exc
             genai.configure(api_key=settings.GEMINI_API_KEY)
             system, contents = _to_contents(messages)
-            model = genai.GenerativeModel(
-                settings.GEMINI_LLM_MODEL, system_instruction=system
-            )
-            resp = model.generate_content(
-                contents, generation_config={"temperature": temperature}
-            )
+            model = genai.GenerativeModel(settings.GEMINI_LLM_MODEL, system_instruction=system)
+            resp = model.generate_content(contents, generation_config={"temperature": temperature})
             return resp.text or ""
 
         try:

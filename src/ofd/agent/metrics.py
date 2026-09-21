@@ -23,9 +23,9 @@ def _percentile(values: list[float], pct: float) -> float | None:
 
 class LatencyTracker:
     def __init__(self) -> None:
-        self.eou: list[float] = []          # end-of-utterance delay (s)
-        self.llm_ttft: list[float] = []     # LLM time to first token (s)
-        self.tts_ttfb: list[float] = []     # TTS time to first byte (s)
+        self.eou: list[float] = []  # end-of-utterance delay (s)
+        self.llm_ttft: list[float] = []  # LLM time to first token (s)
+        self.tts_ttfb: list[float] = []  # TTS time to first byte (s)
 
     def handle(self, m: object) -> None:
         for attr, bucket in (
@@ -39,7 +39,11 @@ class LatencyTracker:
 
     def summary(self) -> None:
         def stats(name: str, vals: list[float]) -> dict:
-            return {"n": len(vals), "p50_ms": _percentile(vals, 50), "p95_ms": _percentile(vals, 95)}
+            return {
+                "n": len(vals),
+                "p50_ms": _percentile(vals, 50),
+                "p95_ms": _percentile(vals, 95),
+            }
 
         eou = stats("eou", self.eou)
         llm = stats("llm_ttft", self.llm_ttft)
@@ -60,7 +64,11 @@ class LatencyTracker:
 
     def snapshot(self) -> dict:
         def stats(vals: list[float]) -> dict:
-            return {"n": len(vals), "p50_ms": _percentile(vals, 50), "p95_ms": _percentile(vals, 95)}
+            return {
+                "n": len(vals),
+                "p50_ms": _percentile(vals, 50),
+                "p95_ms": _percentile(vals, 95),
+            }
 
         return {
             "eou": stats(self.eou),

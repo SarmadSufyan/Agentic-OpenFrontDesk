@@ -25,7 +25,13 @@ class CalcomClient:
         return {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
 
     async def create_booking(
-        self, *, event_type_id: int, start: datetime, name: str, phone: str, notes: str | None = None
+        self,
+        *,
+        event_type_id: int,
+        start: datetime,
+        name: str,
+        phone: str,
+        notes: str | None = None,
     ) -> dict:
         payload = {
             "eventTypeId": event_type_id,

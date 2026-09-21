@@ -18,7 +18,9 @@ class Call(Base, UUIDMixin, TenantMixin, TimestampMixin):
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("agent.id", ondelete="SET NULL"), index=True
     )
-    direction: Mapped[str] = mapped_column(String(20), default=CallDirection.INBOUND, nullable=False)
+    direction: Mapped[str] = mapped_column(
+        String(20), default=CallDirection.INBOUND, nullable=False
+    )
     status: Mapped[str] = mapped_column(String(20), default=CallStatus.ACTIVE, nullable=False)
     outcome: Mapped[str | None] = mapped_column(String(20))
     caller_number: Mapped[str | None] = mapped_column(String(20))

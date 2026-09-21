@@ -69,7 +69,9 @@ async def run_ingestion(
         if not chunks:
             raise ValueError("No text extracted from source")
 
-        await db.execute(sa_delete(DocChunk).where(DocChunk.doc_id == doc.id))  # replace on re-ingest
+        await db.execute(
+            sa_delete(DocChunk).where(DocChunk.doc_id == doc.id)
+        )  # replace on re-ingest
         vectors = await get_embeddings().embed(chunks)
         for i, (chunk, vec) in enumerate(zip(chunks, vectors, strict=True)):
             db.add(
@@ -139,7 +141,11 @@ async def reindex(db: AsyncSession, *, tenant_id: uuid.UUID, doc_id: uuid.UUID) 
     if not doc or doc.tenant_id != tenant_id:
         raise NotFound("Knowledge doc not found")
     chunks = (
-        (await db.execute(select(DocChunk).where(DocChunk.doc_id == doc_id).order_by(DocChunk.chunk_index)))
+        (
+            await db.execute(
+                select(DocChunk).where(DocChunk.doc_id == doc_id).order_by(DocChunk.chunk_index)
+            )
+        )
         .scalars()
         .all()
     )
@@ -161,8 +167,10 @@ async def delete_doc(db: AsyncSession, *, tenant_id: uuid.UUID, doc_id: uuid.UUI
 
 
 async def list_docs(db: AsyncSession, *, tenant_id: uuid.UUID) -> list[KnowledgeDoc]:
-    stmt = select(KnowledgeDoc).where(KnowledgeDoc.tenant_id == tenant_id).order_by(
-        KnowledgeDoc.created_at.desc()
+    stmt = (
+        select(KnowledgeDoc)
+        .where(KnowledgeDoc.tenant_id == tenant_id)
+        .order_by(KnowledgeDoc.created_at.desc())
     )
     return list((await db.execute(stmt)).scalars().all())
 
