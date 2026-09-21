@@ -1,86 +1,118 @@
 <div align="center">
 
-# 🎙️ OpenFrontDesk
+# OpenFrontDesk
 
 **The open-source AI voice receptionist for small businesses.**
-Answers every call 24/7 · books appointments · answers questions from your own docs · captures leads · hands off to a human.
 
-Self-hostable · provider-agnostic · multi-tenant · actually tested.
+Answers every call 24/7, books appointments, answers questions from your own documents, captures leads,
+and hands off to a human. Self-hostable, provider-agnostic, multi-tenant, and tested.
+
+![Architecture](docs/media/architecture.svg)
 
 </div>
+
+> Try it in about two minutes (no API keys needed): run `make demo`, then open
+> `http://localhost:8000/app` and sign in with `demo@openfrontdesk.local` / `demodemo12`.
+<!-- Add a screen recording at docs/media/demo.gif and uncomment: -->
+<!-- ![OpenFrontDesk demo](docs/media/demo.gif) -->
 
 ---
 
 ## Why this exists
 
-Small businesses miss **30–40% of inbound calls** — every missed call is lost revenue. Hiring a
-receptionist is expensive and 9–5. Commercial AI phone SaaS (Vapi, Retell, Bland) is closed and
-pricey (advertised rates balloon 3–5× on the real invoice; HIPAA tiers run ~$1k/mo). The existing
-open-source projects are thin demos: single-tenant, one hard-wired provider, no tests, no dashboard.
+Small businesses miss 30 to 40 percent of inbound calls, and every missed call is lost revenue. A human
+receptionist is expensive and only works business hours. Commercial voice-AI platforms (Vapi, Retell,
+Bland) are closed and costly; the existing open-source projects are thin demos that are single-tenant,
+locked to one provider, untested, and without a dashboard.
 
-**OpenFrontDesk is the missing middle** — a production-grade platform you can run for **≈ $0/month**
-on infrastructure you already own, and upgrade to premium providers per-client when it's earning.
+OpenFrontDesk is the missing middle: a production-grade platform you can run for roughly zero dollars a
+month on infrastructure you already own, and upgrade to premium providers per client once it is earning.
 
 ## What makes it production-grade (not a demo)
 
-- 🔌 **Provider-agnostic** — swap STT / LLM / TTS between free (Groq, Gemini, Kokoro) and premium
-  (Deepgram, Cartesia, Claude) with a config change, no code edits.
-- 🧪 **An eval / call-simulation harness** — synthetic callers run scenario suites in CI so prompt
-  and model changes can't silently regress. *Almost no open-source voice project has this.*
-- 🏢 **Multi-tenant from day one** — many businesses, isolated data, per-tenant knowledge & config.
-- 📚 **Grounded RAG** — answers come from the business's own documents, with citations; if it doesn't
-  know, it takes a message instead of hallucinating.
-- 💸 **Free to demo** — testing happens over the **browser mic** via LiveKit's free tier; a real phone
-  number is only attached at go-live (pennies/minute, on Telnyx/Twilio).
+- **Provider-agnostic.** Swap STT / LLM / TTS between free (Groq, Gemini, Kokoro) and premium (Deepgram,
+  Cartesia, Claude) with a configuration change, no code edits.
+- **An eval / call-simulation harness.** A synthetic caller talks to the agent and scorers grade booking
+  success, grounding (anti-hallucination), contact capture, and latency, gated in CI.
+- **Multi-tenant from day one.** Many businesses, isolated data, per-tenant knowledge and configuration.
+- **Grounded retrieval (RAG).** Answers come from the business's own documents; if it does not know, it
+  takes a message instead of guessing.
+- **Operations built in.** JWT auth, per-tenant rate limiting, PII-redacted logs, a metrics endpoint, and
+  an audit log.
+- **Free to demo.** Testing uses the browser microphone over LiveKit's free tier; a real phone number is
+  only added at go-live.
 
-## The flow
+## Quickstart
 
-```
-Sign up → Teach the agent (upload docs / paste website) → Test it in the browser (free)
-        → Go live (attach a phone number) → Operate (calls, bookings, leads, analytics)
-```
-
-## Architecture at a glance
-
-```
-Caller (phone / browser mic)
-   → LiveKit (WebRTC + SIP, free tier for testing)
-   → Agent worker (Python): VAD → turn detection → STT → LLM (+ RAG + tools) → TTS
-        tools: search_knowledge · book_appointment · take_message · transfer_to_human · send_sms
-   → FastAPI backend  → Postgres + pgvector · Redis · object storage
-   → Next.js dashboard (onboarding, test console, call logs, analytics)
-```
-
-Full details in [`docs/02-architecture.md`](docs/02-architecture.md).
-
-## Tech stack
-
-| Layer | Choice |
-|---|---|
-| Voice orchestration | LiveKit Agents (WebRTC + native SIP) |
-| STT | Groq Whisper (free) · Deepgram (premium) |
-| LLM | Groq Llama / Gemini Flash (free) · Claude (premium) |
-| TTS | Kokoro self-hosted (free) · Cartesia (premium) |
-| Backend | Python · FastAPI · SQLAlchemy (async) |
-| Data | Postgres + pgvector · Redis |
-| Scheduling | Cal.com · Google Calendar |
-| Dashboard | Next.js · Tailwind · shadcn/ui |
-| Deploy | Docker Compose (self-host) / cloud |
-
-## Quickstart (dev)
+Prerequisites: Docker. For the live voice call you also need free
+[Groq](https://console.groq.com) and [LiveKit](https://cloud.livekit.io) keys; they are not needed for
+the RAG or dashboard demo.
 
 ```bash
-cp .env.example .env          # fill in GROQ_API_KEY, LIVEKIT_* (both have free tiers)
-docker compose up -d db redis # Postgres+pgvector and Redis
-pip install -e ".[providers,rag,dev]"
-alembic upgrade head
-ofd-api                       # http://localhost:8000/health  ·  /docs
+cp .env.example .env
+make demo    # starts Postgres + Redis + API, creates tables, seeds a demo dental clinic
 ```
 
-## Documentation
+Then open:
 
-The [`docs/`](docs/) folder has one file per aspect/service — start with
-[`docs/00-overview.md`](docs/00-overview.md). Build status lives in [`progress.md`](progress.md).
+- `http://localhost:8000/app` - dashboard (login `demo@openfrontdesk.local` / `demodemo12`)
+- `http://localhost:8000/docs` - full API (Swagger)
+- `http://localhost:8000/test` - talk to the agent in the browser (needs LiveKit and Groq keys)
+
+If port 8000 is already in use, set `API_HOST_PORT=8080` in `.env`. On Windows without `make`, run
+`scripts/demo.ps1` (or the commands in the `Makefile` demo target).
+
+Run the eval harness:
+
+```bash
+python -m eval --validate    # list scenarios (no keys required)
+python -m eval --run         # run them (needs GROQ_API_KEY and a seeded database)
+```
+
+## Free vs. premium (same code, configuration switch)
+
+| Layer | Free (default) | Premium |
+|---|---|---|
+| Speech-to-text | Groq Whisper | Deepgram Nova-3 |
+| Language model | Groq Llama / Gemini Flash | Claude / Gemini (paid) |
+| Text-to-speech | Kokoro (self-hosted) | Cartesia Sonic-3 |
+| Embeddings | fastembed (local) | Gemini |
+| Telephony | none (browser mic) | Telnyx / Twilio |
+
+All-in premium is roughly 5 to 10 cents per minute, so a three-minute call costs cents, while a human
+receptionist costs 15 to 25 dollars an hour.
+
+## Project layout
+
+```
+src/ofd/     api, agent (voice worker), rag, services, providers, models
+eval/        scenario suite, scorers, and the text-mode runner (the eval harness)
+docs/        one file per aspect (architecture, RAG, costing, security, and so on)
+deploy/      Dockerfiles and nginx
+scripts/     init_db.py, seed_demo.py, demo helpers
+progress.md  living build log
+```
+
+Start with [docs/00-overview.md](docs/00-overview.md) and
+[docs/02-architecture.md](docs/02-architecture.md).
+
+## Roadmap
+
+| Phase | Focus | Status |
+|---|---|---|
+| 0 | Foundations (API, database, providers) | Done |
+| 1 | Talking agent (browser voice) | Done |
+| 2 | Useful agent (RAG, tools, booking) | Done |
+| 3 | The product (auth, tenancy, dashboard) | Done |
+| 4 | Production-grade (eval, metrics, quotas, security) | In progress |
+| 5 | Launch (hosted demo, phone number) | Planned |
+
+Live detail is in [progress.md](progress.md).
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Security policy:
+[SECURITY.md](SECURITY.md).
 
 ## License
 
