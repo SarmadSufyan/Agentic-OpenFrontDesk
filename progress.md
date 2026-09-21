@@ -95,10 +95,11 @@
 - [x] Observability: `/metrics` (Prometheus text) + HTTP request counters + structured logs
 - [x] Per-tenant rate limiting / quotas (Redis fixed-window, `services/quota.py` + `rate_limit` dep on writes)
 - [x] Security: PII redaction in logs (email/phone), security headers (nosniff / DENY / no-referrer)
+- [x] Non-blocking ingestion (create doc → background embed job) + dashboard call-detail view + audit tab
+- [x] Audit log (tenant/agent/knowledge changes, `GET /audit`) + recording-consent config (gated, off by default)
 - [ ] Full eval RUN in CI — needs an LLM key + seeded DB (framework ready: `python -m eval --run`)
 - [ ] OpenTelemetry traces + Langfuse LLM traces (config-gated; not wired yet)
 - [ ] Provider failover + minutes/spend caps (rate limiter in place; spend caps TODO)
-- [ ] Recording consent + audit log
 - [ ] Telephony go-live (Telnyx/Twilio SIP → LiveKit) — needs a telephony account
 
 ## Phase 5 — Launch ⬜
@@ -187,7 +188,20 @@ user unlock live-call testing of Phases 1–2 at any time.)
   blocks (limit=3); redaction + metrics unit tests pass (8 total with eval).
 
 **Remaining in Phase 4 (needs accounts/keys):** wire the full `eval --run` into CI (LLM key), optional
-OTel/Langfuse, recording consent + audit log, and telephony go-live (Telnyx/Twilio account + number).
+OTel/Langfuse, and telephony go-live (Telnyx/Twilio account + number).
+
+### 2026-09-21 (Phase 4, part 3 — robustness bundle)
+- Non-blocking ingestion: split `create_doc` from `run_ingestion`; knowledge write endpoints create +
+  commit the doc (status `pending`, HTTP 202) then run embedding via a FastAPI BackgroundTask
+  (`ingest_job`). Fixed a real ordering bug — the task raced the request's deferred commit and saw no
+  row (`ingest_job_missing_doc`); now the doc is committed in its own session before scheduling.
+- Audit log: `audit_log` table + `services/audit.py`; recorded on tenant/agent updates and knowledge
+  add/delete; `GET /audit` (owner/admin) + dashboard Audit tab.
+- Dashboard: call-detail view (transcript + outcome + latency).
+- Recording-consent config plumbing in the worker (gated by `RECORDING_ENABLED`, off by default).
+- **Verified live:** POST /knowledge/text → `pending` (202) → `ready` (background), then searchable;
+  audit shows `tenant.update` + `knowledge.add`; call detail returns transcript; dashboard serves.
+- Note: `init_db` re-run to create the new `audit_log` table.
 
 ### 2026-09-21 (user testing — Phase 0)
 - Started Docker Desktop (engine was off). Built the API image (~284s, one-time).

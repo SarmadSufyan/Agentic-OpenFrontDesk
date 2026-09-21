@@ -7,16 +7,18 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ofd.api.deps import AuthContext, get_context, get_db
+from ofd.api.deps import AuthContext, get_context, get_db, require_roles
 from ofd.core.exceptions import NotFound
 from ofd.schemas.records import (
     AnalyticsOut,
+    AuditOut,
     BookingOut,
     CallDetailOut,
     CallOut,
     LeadOut,
 )
 from ofd.services import analytics as analytics_svc
+from ofd.services import audit as audit_svc
 from ofd.services import booking as booking_svc
 from ofd.services import calls as calls_svc
 from ofd.services import leads as leads_svc
@@ -56,3 +58,11 @@ async def analytics_overview(
     ctx: AuthContext = Depends(get_context), db: AsyncSession = Depends(get_db)
 ):
     return await analytics_svc.overview(db, tenant_id=ctx.tenant.id)
+
+
+@router.get("/audit", response_model=list[AuditOut])
+async def list_audit(
+    ctx: AuthContext = Depends(require_roles("owner", "admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await audit_svc.list_audit(db, tenant_id=ctx.tenant.id)

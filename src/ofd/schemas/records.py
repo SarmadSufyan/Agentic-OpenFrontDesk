@@ -58,3 +58,13 @@ class AnalyticsOut(BaseModel):
     leads_total: int
     minutes_total: float
     avg_latency_ms: float | None = None
+
+
+class AuditOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    action: str
+    target: str | None = None
+    actor_user_id: uuid.UUID | None = None
+    meta: dict = {}
+    created_at: datetime

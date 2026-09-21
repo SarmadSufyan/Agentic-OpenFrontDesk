@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ofd.api.deps import AuthContext, get_context, get_db, require_roles
 from ofd.core.exceptions import NotFound
 from ofd.schemas.workspace import AgentOut, AgentUpdate, TenantOut, TenantUpdate
+from ofd.services import audit as audit_svc
 from ofd.services import tenants as tenants_svc
 
 router = APIRouter(tags=["workspace"])
@@ -24,7 +25,11 @@ async def update_tenant(
     ctx: AuthContext = Depends(require_roles("owner", "admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await tenants_svc.update_tenant(db, ctx.tenant, body.model_dump(exclude_unset=True))
+    result = await tenants_svc.update_tenant(db, ctx.tenant, body.model_dump(exclude_unset=True))
+    await audit_svc.record(
+        db, tenant_id=ctx.tenant.id, actor_user_id=ctx.user.id, action="tenant.update"
+    )
+    return result
 
 
 @router.get("/agents/current", response_model=AgentOut)
@@ -44,4 +49,8 @@ async def update_agent(
     agent = await tenants_svc.get_default_agent(db, ctx.tenant.id)
     if not agent:
         raise NotFound("No agent configured for this workspace")
-    return await tenants_svc.update_agent(db, agent, body.model_dump(exclude_unset=True))
+    result = await tenants_svc.update_agent(db, agent, body.model_dump(exclude_unset=True))
+    await audit_svc.record(
+        db, tenant_id=ctx.tenant.id, actor_user_id=ctx.user.id, action="agent.update"
+    )
+    return result

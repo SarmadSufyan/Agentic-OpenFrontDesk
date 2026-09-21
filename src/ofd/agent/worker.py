@@ -92,6 +92,7 @@ async def _resolve_config(metadata: str | None) -> dict:
         "hours_summary": None,
         "services_summary": None,
         "slot_minutes": 30,
+        "consent_line": None,
     }
     try:
         async with session_scope() as db:
@@ -101,6 +102,8 @@ async def _resolve_config(metadata: str | None) -> dict:
                 cfg["business_name"] = tenant.name
                 cfg["timezone"] = tenant.timezone or "UTC"
                 cfg["hours_summary"] = _hours_summary(tenant.business_hours)
+                if settings.RECORDING_ENABLED and tenant.settings:
+                    cfg["consent_line"] = tenant.settings.get("record_consent_line")
             if agent:
                 cfg["agent_id"] = agent.id
                 cfg["tone"] = agent.tone or cfg["tone"]
@@ -202,7 +205,10 @@ async def entrypoint(ctx: JobContext) -> None:
         slot_minutes=cfg["slot_minutes"],
     )
     await session.start(agent=agent, room=ctx.room, room_input_options=RoomInputOptions())
-    await session.generate_reply(instructions=f"Greet the caller: {cfg['greeting']} Keep it to one sentence.")
+    greeting = cfg["greeting"]
+    if cfg.get("consent_line"):
+        greeting = f"{cfg['consent_line']} {greeting}"
+    await session.generate_reply(instructions=f"Greet the caller: {greeting} Keep it brief.")
 
 
 def run() -> None:

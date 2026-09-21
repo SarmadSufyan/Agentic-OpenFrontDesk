@@ -54,6 +54,8 @@ DASHBOARD_HTML = """<!doctype html>
   #login{max-width:380px;margin:8vh auto;padding:26px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
   #login h1{font-size:1.3rem;margin:0 0 4px} #login p{color:var(--muted);margin:0 0 16px;font-size:.9rem}
   h2{font-size:1.2rem;margin:.2em 0 .6em}
+  .transcript{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:320px;overflow:auto;font-size:.9rem}
+  .line{margin:5px 0} .line b{text-transform:capitalize} .line.assistant b{color:var(--accent-ink)} .line.user b{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -116,7 +118,7 @@ function logout(){ TOKEN=null; try{localStorage.removeItem("ofd_token");}catch(e
 
 const TABS = [
   ["overview","Overview"],["calls","Calls"],["bookings","Bookings"],
-  ["leads","Leads"],["knowledge","Knowledge"],["agent","Agent"]
+  ["leads","Leads"],["knowledge","Knowledge"],["agent","Agent"],["audit","Audit"]
 ];
 let active = "overview";
 function renderTabs(){
@@ -143,8 +145,19 @@ async function render(){
         <div class="card"><b>Call outcomes:</b> ${outcomes}</div>`;
     } else if (active==="calls"){
       const rows = await api("/calls");
-      v.innerHTML = `<h2>Calls</h2>` + table(rows, ["created_at","direction","outcome","caller_number","duration_seconds"],
-        ["When","Direction","Outcome","Caller","Secs"], r=>({created_at:when(r.created_at),duration_seconds:r.duration_seconds}));
+      let html = `<h2>Calls</h2>`;
+      if (!rows.length) { html += '<p class="muted">No calls yet.</p>'; }
+      else {
+        html += '<table><tr><th>When</th><th>Direction</th><th>Outcome</th><th>Caller</th><th>Secs</th><th></th></tr>';
+        html += rows.map(r=>`<tr><td>${when(r.created_at)}</td><td>${esc(r.direction)}</td><td>${esc(r.outcome||'-')}</td><td>${esc(r.caller_number||'-')}</td><td>${r.duration_seconds}</td><td><button onclick="viewCall('${r.id}')">View</button></td></tr>`).join("");
+        html += '</table>';
+      }
+      html += '<div id="callDetail" style="margin-top:14px"></div>';
+      v.innerHTML = html;
+    } else if (active==="audit"){
+      const rows = await api("/audit");
+      v.innerHTML = `<h2>Audit log</h2>` + table(rows, ["created_at","action","target"],
+        ["When","Action","Target"], r=>({created_at:when(r.created_at)}));
     } else if (active==="bookings"){
       const rows = await api("/bookings");
       v.innerHTML = `<h2>Bookings</h2>` + table(rows, ["customer_name","service","start_at","status"],
@@ -196,6 +209,21 @@ async function saveAgent(){
   try { await api("/agents/current",{method:"PUT",body:JSON.stringify({name:$("a_name").value,voice:$("a_voice").value,tone:$("a_tone").value,greeting:$("a_greeting").value})});
     $("aMsg").innerHTML='<div class="msg ok">Saved.</div>';
   } catch(e){ $("aMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+
+async function viewCall(id){
+  const d = $("callDetail"); d.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const c = await api("/calls/" + id);
+    const lines = (c.transcript||[]).map(t=>`<div class="line ${esc(t.role)}"><b>${esc(t.role)}:</b> ${esc(t.text)}</div>`).join("")
+      || '<span class="muted">No transcript recorded.</span>';
+    const lat = (c.latency_ms && c.latency_ms.llm_ttft && c.latency_ms.llm_ttft.p50_ms!=null)
+      ? ` · LLM p50 ${c.latency_ms.llm_ttft.p50_ms}ms` : "";
+    d.innerHTML = `<div class="card"><h3>Call detail</h3>
+      <p class="muted">${when(c.started_at)} · ${esc(c.direction)} · outcome: ${esc(c.outcome||'-')} · ${c.duration_seconds}s${lat}</p>
+      ${c.summary ? '<p><b>Summary:</b> '+esc(c.summary)+'</p>' : ''}
+      <div class="transcript">${lines}</div></div>`;
+  } catch(e){ d.innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
 }
 
 async function boot(){

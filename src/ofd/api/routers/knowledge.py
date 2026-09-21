@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ofd.api.deps import get_active_tenant_id, get_db, rate_limit
+from ofd.db.session import session_scope
 from ofd.models.enums import SourceType
 from ofd.schemas.knowledge import KnowledgeDocOut, SearchHit, TextIn, UrlIn
+from ofd.services import audit as audit_svc
 from ofd.services import knowledge as knowledge_svc
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
@@ -32,40 +34,57 @@ async def list_docs(
     return await knowledge_svc.list_docs(db, tenant_id=tenant_id)
 
 
-@router.post("/text", response_model=KnowledgeDocOut, status_code=201)
+# Create + commit the doc in its own session BEFORE scheduling the background task, so the task
+# (which opens a fresh session) always sees a persisted row. Relying on the request session's
+# deferred commit races the background task in FastAPI.
+@router.post("/text", response_model=KnowledgeDocOut, status_code=202)
 async def add_text(
     body: TextIn,
+    background_tasks: BackgroundTasks,
     tenant_id: uuid.UUID = Depends(write_tenant),
-    db: AsyncSession = Depends(get_db),
 ):
-    return await knowledge_svc.create_and_ingest(
-        db, tenant_id=tenant_id, title=body.title, source_type=SourceType.TEXT, text=body.text
-    )
+    async with session_scope() as db:
+        doc = await knowledge_svc.create_doc(
+            db, tenant_id=tenant_id, title=body.title, source_type=SourceType.TEXT
+        )
+        await audit_svc.record(db, tenant_id=tenant_id, action="knowledge.add", target=body.title)
+    background_tasks.add_task(knowledge_svc.ingest_job, doc_id=doc.id, text=body.text)
+    return doc
 
 
-@router.post("/url", response_model=KnowledgeDocOut, status_code=201)
+@router.post("/url", response_model=KnowledgeDocOut, status_code=202)
 async def add_url(
     body: UrlIn,
+    background_tasks: BackgroundTasks,
     tenant_id: uuid.UUID = Depends(write_tenant),
-    db: AsyncSession = Depends(get_db),
 ):
-    return await knowledge_svc.create_and_ingest(
-        db, tenant_id=tenant_id, title=body.title or body.url, source_type=SourceType.URL, url=body.url
-    )
+    title = body.title or body.url
+    async with session_scope() as db:
+        doc = await knowledge_svc.create_doc(
+            db, tenant_id=tenant_id, title=title, source_type=SourceType.URL, source_ref=body.url
+        )
+        await audit_svc.record(db, tenant_id=tenant_id, action="knowledge.add", target=body.url)
+    background_tasks.add_task(knowledge_svc.ingest_job, doc_id=doc.id, url=body.url)
+    return doc
 
 
-@router.post("/file", response_model=KnowledgeDocOut, status_code=201)
+@router.post("/file", response_model=KnowledgeDocOut, status_code=202)
 async def add_file(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     tenant_id: uuid.UUID = Depends(write_tenant),
-    db: AsyncSession = Depends(get_db),
 ):
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     source_type = {"pdf": SourceType.PDF, "docx": SourceType.DOCX}.get(ext, SourceType.TXT)
     data = await file.read()
-    return await knowledge_svc.create_and_ingest(
-        db, tenant_id=tenant_id, title=file.filename or "upload", source_type=source_type, data=data
-    )
+    title = file.filename or "upload"
+    async with session_scope() as db:
+        doc = await knowledge_svc.create_doc(
+            db, tenant_id=tenant_id, title=title, source_type=source_type
+        )
+        await audit_svc.record(db, tenant_id=tenant_id, action="knowledge.add", target=title)
+    background_tasks.add_task(knowledge_svc.ingest_job, doc_id=doc.id, data=data)
+    return doc
 
 
 @router.post("/{doc_id}/reindex", response_model=KnowledgeDocOut)
@@ -84,6 +103,7 @@ async def delete_doc(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await knowledge_svc.delete_doc(db, tenant_id=tenant_id, doc_id=doc_id)
+    await audit_svc.record(db, tenant_id=tenant_id, action="knowledge.delete", target=str(doc_id))
 
 
 @router.get("/search", response_model=list[SearchHit])

@@ -2,6 +2,7 @@
 
 from ofd.db.base import Base
 from ofd.models.agent import Agent, PhoneNumber
+from ofd.models.audit import AuditLog
 from ofd.models.booking import Booking
 from ofd.models.call import Call, CallEvent
 from ofd.models.integration import Integration
@@ -18,6 +19,7 @@ __all__ = [
     "User",
     "Agent",
     "PhoneNumber",
+    "AuditLog",
     "KnowledgeDoc",
     "DocChunk",
     "Call",
