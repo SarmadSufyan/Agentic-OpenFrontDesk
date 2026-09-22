@@ -1,6 +1,7 @@
 """Import all ORM models so ``Base.metadata`` is fully populated (Alembic, create_all)."""
 
 from ofd.db.base import Base
+from ofd.models.access import AllowlistEntry
 from ofd.models.agent import Agent, PhoneNumber
 from ofd.models.audit import AuditLog
 from ofd.models.booking import Booking
@@ -20,6 +21,7 @@ __all__ = [
     "Agent",
     "PhoneNumber",
     "AuditLog",
+    "AllowlistEntry",
     "KnowledgeDoc",
     "DocChunk",
     "Call",

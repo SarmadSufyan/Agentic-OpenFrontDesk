@@ -25,7 +25,13 @@ from livekit.agents import (
     cli,
 )
 from livekit.agents import metrics as lk_metrics
-from livekit.plugins import silero
+
+# Import the turn-detector plugin at module load so `ofd-agent download-files` fetches its model
+# (baked into the image) and the plugin is registered before jobs run.
+from livekit.plugins import (
+    silero,
+    turn_detector,  # noqa: E402,F401
+)
 
 from ofd.agent.frontdesk import FrontDeskAgent
 from ofd.agent.metrics import LatencyTracker
@@ -131,6 +137,13 @@ async def _resolve_config(metadata: str | None) -> dict:
 
 def prewarm(proc: agents.JobProcess) -> None:
     proc.userdata["vad"] = silero.VAD.load()
+    # Pre-import heavy modules during warm-up so the first turn isn't stalled importing them on the
+    # event loop (these caused ~0.2-0.8s hot-path stalls that delayed audio/turn handling).
+    try:
+        import asyncpg  # noqa: F401
+        from livekit.plugins import openai as _openai  # noqa: F401
+    except Exception:
+        pass
 
 
 async def entrypoint(ctx: JobContext) -> None:

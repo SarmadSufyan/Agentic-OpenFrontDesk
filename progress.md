@@ -3,8 +3,9 @@
 > Single source of truth for build progress. Updated at the end of every work session.
 > Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ blocked/parked
 
-**Current phase:** Phase 4 — Production-grade (🚧 eval + observability + quotas + security done; telephony & live-eval need accounts/keys)
-**Last updated:** 2026-09-21
+**Current phase:** SaaS build — M1 (access engine) ✅ done → M2 (embeddable chat widget) next
+**Last updated:** 2026-09-23
+**Note:** Live voice call verified working end-to-end (Groq `openai/gpt-oss-20b`, Kokoro TTS, turn-detector baked in). Phases 0–4 built; pushed to GitHub (CI green). Now building the SaaS product layer.
 
 ---
 
@@ -101,6 +102,23 @@
 - [ ] OpenTelemetry traces + Langfuse LLM traces (config-gated; not wired yet)
 - [ ] Provider failover + minutes/spend caps (rate limiter in place; spend caps TODO)
 - [ ] Telephony go-live (Telnyx/Twilio SIP → LiveKit) — needs a telephony account
+
+## SaaS product ("OpenFrontDesk Cloud") — M1–M6
+Repositioned: train an AI on your docs, deploy as voice agent + embeddable web chat widget + n8n/Zapier
+automations. Free model: cap concurrent voice + waitlist + email allowlist (accounts/knowledge/text/
+widget unlimited; open signups). Decisions (2026-09-23): frontend = Next.js + shadcn/ui; flagship =
+chat widget first then automations.
+
+- [x] **M1 — Access engine:** Redis concurrency cap + FIFO waitlist + priority allowlist
+      (`services/access.py`), `access_allowlist` table, `/voice/{acquire,heartbeat,release,status}`
+      (mints the LiveKit token only when a slot is granted), `/admin/*` (allowlist + live sessions,
+      gated by `ADMIN_EMAILS`). Verified: cap=3 grants 3 + queues the 4th, release promotes FIFO,
+      allowlist bypasses a full cap; endpoints + admin auth confirmed.
+- [ ] **M2 — Embeddable chat widget:** public text-chat endpoint + `widget.js` + leads/bookings from chat.
+- [ ] **M3 — Automations:** outbound webhooks + API keys + n8n template.
+- [ ] **M4 — Contact/personalization:** contact form + scheduling link + admin inbox.
+- [ ] **M5 — Modern frontend (Next.js + shadcn/ui):** landing, auth, onboarding, dashboard, test console.
+- [ ] **M6 — Deploy + launch:** Vercel (frontend) + VPS (backend) + docs + live demo.
 
 ## Phase 5 — Launch ⬜
 - [ ] Hosted live demo (browser + one phone number)

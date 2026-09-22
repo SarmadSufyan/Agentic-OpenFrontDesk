@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # --- Groq ---
     GROQ_API_KEY: str = ""
     GROQ_STT_MODEL: str = "whisper-large-v3-turbo"
-    GROQ_LLM_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_LLM_MODEL: str = "openai/gpt-oss-20b"
 
     # --- Gemini ---
     GEMINI_API_KEY: str = ""
@@ -125,6 +125,12 @@ class Settings(BaseSettings):
     SECURITY_HEADERS: bool = True
     RECORDING_ENABLED: bool = False
 
+    # --- SaaS access control (free-tier fair use) ---
+    MAX_CONCURRENT_VOICE: int = 3  # simultaneous live voice sessions before queueing
+    VOICE_SESSION_TTL_SECONDS: int = 360  # a granted voice slot expires if not heartbeated
+    ADMIN_EMAILS: str = ""  # comma-separated admin emails (platform admins)
+    ACCESS_ALLOWLIST: str = ""  # comma-separated emails that skip the voice queue
+
     # ----------------------------------------------------------------- helpers
     @property
     def database_url(self) -> str:
@@ -139,6 +145,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def admin_emails(self) -> set[str]:
+        return {e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()}
+
+    @property
+    def access_allowlist(self) -> set[str]:
+        return {e.strip().lower() for e in self.ACCESS_ALLOWLIST.split(",") if e.strip()}
 
     @property
     def is_production(self) -> bool:

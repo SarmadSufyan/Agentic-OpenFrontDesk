@@ -30,7 +30,9 @@ __all__ = [
     "get_current_user",
     "get_context",
     "get_active_tenant_id",
+    "get_voice_identity",
     "require_roles",
+    "require_admin",
     "rate_limit",
     "AuthContext",
 ]
@@ -119,3 +121,33 @@ def rate_limit(resource: str, per_min: int | None = None):
         return tenant_id
 
     return dep
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """Platform admin (email listed in ADMIN_EMAILS)."""
+    if user.email.lower() not in settings.admin_emails:
+        raise Forbidden("Admin access required")
+    return user
+
+
+async def get_voice_identity(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    tenant: str | None = Query(None, description="Dev-only tenant slug when unauthenticated"),
+    db: AsyncSession = Depends(get_db),
+) -> tuple[uuid.UUID, str | None]:
+    """Resolve (tenant_id, email) for voice-access gating: from the token, else dev tenant slug."""
+    if creds is not None:
+        payload = decode_token(creds.credentials)
+        tid = payload.get("tid")
+        if tid:
+            email = None
+            sub = payload.get("sub")
+            if sub:
+                u = await db.get(User, uuid.UUID(sub))
+                email = u.email if u else None
+            return uuid.UUID(tid), email
+    if not settings.is_production:
+        t = await tenants_svc.get_tenant_by_slug(db, tenant or "demo")
+        if t:
+            return t.id, None
+    raise Unauthorized("Authentication required")

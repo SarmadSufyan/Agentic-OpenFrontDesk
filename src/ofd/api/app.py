@@ -13,11 +13,13 @@ from fastapi.responses import JSONResponse
 
 from ofd import __version__
 from ofd.api.routers import (
+    admin,
     auth,
     health,
     knowledge,
     livekit,
     records,
+    voice,
     web,
     workspace,
 )
@@ -90,6 +92,8 @@ def create_app() -> FastAPI:
     app.include_router(workspace.router)
     app.include_router(records.router)
     app.include_router(knowledge.router)
+    app.include_router(voice.router)
+    app.include_router(admin.router)
     app.include_router(livekit.router)
     app.include_router(web.router)
     return app
