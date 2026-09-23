@@ -95,6 +95,7 @@ class Settings(BaseSettings):
     RAG_CHUNK_TARGET_TOKENS: int = 400
     RAG_CHUNK_OVERLAP_TOKENS: int = 60
     RAG_TOP_K: int = 5
+    INGEST_TIMEOUT_SECONDS: int = 300  # a document still indexing after this is marked failed
 
     # --- Voice transport / telephony ---
     LIVEKIT_URL: str = ""
@@ -132,14 +133,11 @@ class Settings(BaseSettings):
     ACCESS_ALLOWLIST: str = ""  # comma-separated emails that skip the voice queue
 
     # --- Automations (outbound webhooks + public API) ---
-    WEBHOOK_ALLOW_PRIVATE: bool = (
-        False  # allow delivery to private/internal hosts (self-hosted n8n)
-    )
+    # Allow delivery to private/internal hosts (only for a self-hosted receiver such as n8n).
+    WEBHOOK_ALLOW_PRIVATE: bool = False
     WEBHOOK_TIMEOUT_SECONDS: float = 10.0
     WEBHOOK_MAX_ATTEMPTS: int = 3
-    WEBHOOK_DISABLE_AFTER_FAILURES: int = (
-        25  # auto-disable an endpoint after N consecutive failures
-    )
+    WEBHOOK_DISABLE_AFTER_FAILURES: int = 25  # auto-disable after N consecutive failures
     API_RATE_LIMIT_PER_MIN: int = 120  # per-tenant limit for API-key requests
 
     # --- Contact / custom solutions ---

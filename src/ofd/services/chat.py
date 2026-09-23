@@ -8,7 +8,8 @@ the same leads/bookings in the dashboard. Text is cheap, so this is not concurre
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,10 +43,16 @@ _TOOLS = [
         "type": "function",
         "function": {
             "name": "check_availability",
-            "description": "Find open appointment slots.",
+            "description": (
+                "Find open appointment slots. Pass `date` (YYYY-MM-DD, the business's local date) "
+                "when the visitor asks about a specific day; omit it for the next openings."
+            ),
             "parameters": {
                 "type": "object",
-                "properties": {"service": {"type": "string"}},
+                "properties": {
+                    "date": {"type": "string", "description": "YYYY-MM-DD"},
+                    "service": {"type": "string"},
+                },
             },
         },
     },
@@ -61,7 +68,7 @@ _TOOLS = [
                     "phone": {"type": "string"},
                     "start_time": {
                         "type": "string",
-                        "description": "ISO 8601, e.g. 2026-09-24T14:30:00",
+                        "description": "Local time at the business, ISO 8601, e.g. 2026-09-24T14:30:00",
                     },
                     "service": {"type": "string"},
                 },
@@ -122,15 +129,49 @@ async def _llm(messages: list[dict], tools: list | None = None) -> dict:
     return resp.json()["choices"][0]["message"]
 
 
+_DAY_LABELS = {
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun",
+}
+
+
+def _hours_summary(hours: dict | None) -> str:
+    if not hours:
+        return "not specified"
+    open_days = [f"{_DAY_LABELS.get(d, d)} {v[0]}-{v[1]}" for d, v in hours.items() if v]
+    return ", ".join(open_days) or "closed every day"
+
+
 def _system_prompt(tenant: Tenant, agent: Agent | None) -> str:
-    name = tenant.name
+    """Everything the model cannot look up: who it is, how it sounds, and what "today" means."""
+    try:
+        tz = ZoneInfo(tenant.timezone or "UTC")
+    except Exception:
+        tz = ZoneInfo("UTC")
+    now = datetime.now(tz)
+    tone = agent.tone if agent and agent.tone else "friendly and professional"
+    rules = (agent.booking_rules or {}) if agent else {}
+    services = ", ".join(rules.get("services") or []) or "see the knowledge base"
+    # Small models are unreliable at weekday arithmetic, so hand them the calendar outright.
+    week = ", ".join(
+        f"{(now + timedelta(days=i)):%a %Y-%m-%d}{' (today)' if i == 0 else ''}" for i in range(8)
+    )
     return (
-        f"You are the website assistant for {name}. You are friendly and concise.\n"
+        f"You are the website assistant for {tenant.name}. Your tone is {tone}. Be concise.\n"
+        f"Now: {now:%A %Y-%m-%d %H:%M} ({tz.key}). The next days are: {week}. Use this list to "
+        "turn words like 'tomorrow' or 'this Sunday' into dates; never calculate weekdays yourself.\n"
+        f"Opening hours: {_hours_summary(tenant.business_hours)}. "
+        f"Bookable services: {services}. Appointments last {rules.get('slot_minutes', 30)} minutes.\n"
         "Rules:\n"
         "- Answer ONLY using facts from search_knowledge. If it returns NO_RESULTS, say you're not sure "
-        "and offer to take a message. NEVER invent prices, hours, availability, or policy.\n"
-        "- Use check_availability then book_appointment to schedule; collect the visitor's name (and "
-        "phone if booking).\n"
+        "and offer to take a message. NEVER invent prices, availability, or policy.\n"
+        "- To schedule: call check_availability (with `date` when a day is mentioned), offer real "
+        "slots, get the visitor's name and phone, confirm the time, then call book_appointment.\n"
         "- Keep replies short and helpful. This is a website chat."
     )
 
@@ -147,12 +188,13 @@ async def _run_tool(
                     sources.add(h.source_title)
             return retrieve.format_context(hits) if hits else "NO_RESULTS"
         if name == "check_availability":
+            day = datetime.fromisoformat(args["date"]) if args.get("date") else None
             slots = await booking_svc.check_availability(
-                db, tenant, service=args.get("service"), slot_minutes=slot
+                db, tenant, service=args.get("service"), on_date=day, slot_minutes=slot, limit=8
             )
-            return (
-                "; ".join(s.start.strftime("%A %b %d %I:%M %p") for s in slots) or "No open slots"
-            )
+            if not slots:
+                return "No open slots" + (" on that day (closed or fully booked)" if day else "")
+            return "; ".join(s.start.strftime("%A %Y-%m-%d %H:%M") for s in slots)
         if name == "book_appointment":
             start = datetime.fromisoformat(args["start_time"])
             bk = await booking_svc.book(

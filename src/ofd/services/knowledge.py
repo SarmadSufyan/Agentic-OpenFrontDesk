@@ -7,14 +7,16 @@ synchronous path for scripts/seeding.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ofd.core.config import settings
-from ofd.core.exceptions import NotFound
+from ofd.core.exceptions import NotFound, ValidationError
 from ofd.core.logging import get_logger
 from ofd.db.session import session_scope
 from ofd.models.enums import DocStatus
@@ -129,6 +131,14 @@ async def create_and_ingest(
     return doc
 
 
+async def _mark_failed(doc_id: uuid.UUID, error: str) -> None:
+    async with session_scope() as db:
+        doc = await db.get(KnowledgeDoc, doc_id)
+        if doc is not None:
+            doc.status = DocStatus.FAILED
+            doc.error = error
+
+
 async def ingest_job(
     *,
     doc_id: uuid.UUID,
@@ -136,16 +146,49 @@ async def ingest_job(
     text: str | None = None,
     url: str | None = None,
 ) -> None:
-    """Background task: ingest an already-created doc in its own DB session."""
+    """Background task: ingest an already-created doc in its own DB session.
+
+    Bounded by INGEST_TIMEOUT_SECONDS so a stalled download or parser can never leave a document
+    "pending" forever; on timeout the doc is marked failed with an actionable message.
+    """
+    try:
+        async with session_scope() as db:
+            doc = await db.get(KnowledgeDoc, doc_id)
+            if doc is None:
+                logger.warning("ingest_job_missing_doc", doc_id=str(doc_id))
+                return
+            try:
+                await asyncio.wait_for(
+                    run_ingestion(db, doc=doc, data=data, text=text, url=url),
+                    timeout=settings.INGEST_TIMEOUT_SECONDS,
+                )
+            except TimeoutError:
+                raise
+            except Exception:
+                pass  # status already marked failed inside run_ingestion
+    except TimeoutError:
+        logger.warning("ingest_timeout", doc_id=str(doc_id))
+        await _mark_failed(doc_id, "Indexing timed out. Remove this source and add it again.")
+
+
+async def recover_stale_ingestions() -> int:
+    """Mark documents left pending/processing by a restart as failed (background jobs do not
+    survive a restart). Only docs older than the ingest timeout are touched, so a job that is
+    still legitimately running in another process is never interrupted."""
+    cutoff = datetime.now(UTC) - timedelta(seconds=settings.INGEST_TIMEOUT_SECONDS)
     async with session_scope() as db:
-        doc = await db.get(KnowledgeDoc, doc_id)
-        if doc is None:
-            logger.warning("ingest_job_missing_doc", doc_id=str(doc_id))
-            return
-        try:
-            await run_ingestion(db, doc=doc, data=data, text=text, url=url)
-        except Exception:
-            pass  # status already marked failed inside run_ingestion
+        result = await db.execute(
+            update(KnowledgeDoc)
+            .where(
+                KnowledgeDoc.status.in_([DocStatus.PENDING, DocStatus.PROCESSING]),
+                KnowledgeDoc.created_at < cutoff,
+            )
+            .values(
+                status=DocStatus.FAILED,
+                error="Indexing was interrupted by a restart. Remove this source and add it again.",
+            )
+        )
+        return result.rowcount or 0
 
 
 async def reindex(db: AsyncSession, *, tenant_id: uuid.UUID, doc_id: uuid.UUID) -> KnowledgeDoc:
@@ -162,10 +205,11 @@ async def reindex(db: AsyncSession, *, tenant_id: uuid.UUID, doc_id: uuid.UUID) 
         .scalars()
         .all()
     )
-    if chunks:
-        vectors = await get_embeddings().embed([c.text for c in chunks])
-        for c, vec in zip(chunks, vectors, strict=True):
-            c.embedding = vec
+    if not chunks:
+        raise ValidationError("This source has no indexed passages. Remove it and add it again.")
+    vectors = await get_embeddings().embed([c.text for c in chunks])
+    for c, vec in zip(chunks, vectors, strict=True):
+        c.embedding = vec
     doc.status = DocStatus.READY
     await db.flush()
     return doc

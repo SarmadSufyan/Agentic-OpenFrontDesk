@@ -105,6 +105,7 @@ async def _resolve_config(metadata: str | None) -> dict:
         "agent_id": None,
         "business_name": None,
         "tone": "friendly and professional",
+        "voice": None,
         "timezone": "UTC",
         "greeting": "Thanks for calling! How can I help you today?",
         "hours_summary": None,
@@ -125,6 +126,7 @@ async def _resolve_config(metadata: str | None) -> dict:
             if agent:
                 cfg["agent_id"] = agent.id
                 cfg["tone"] = agent.tone or cfg["tone"]
+                cfg["voice"] = agent.voice
                 cfg["greeting"] = agent.greeting or cfg["greeting"]
                 rules = agent.booking_rules or {}
                 cfg["slot_minutes"] = int(rules.get("slot_minutes", 30))
@@ -179,7 +181,7 @@ async def entrypoint(ctx: JobContext) -> None:
         vad=vad,
         stt=build_stt(),
         llm=build_llm(),
-        tts=build_tts(),
+        tts=build_tts(cfg["voice"]),
         turn_detection=build_turn_detection(),
     )
 

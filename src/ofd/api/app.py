@@ -40,6 +40,13 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("startup", app=settings.APP_NAME, env=settings.ENV, version=__version__)
+    try:
+        from ofd.services.knowledge import recover_stale_ingestions
+
+        if recovered := await recover_stale_ingestions():
+            logger.warning("recovered_stale_ingestions", count=recovered)
+    except Exception as exc:  # no database yet (tests, first boot): nothing to recover
+        logger.info("ingest_recovery_skipped", reason=type(exc).__name__)
     yield
     await webhooks_svc.drain(10.0)  # finish in-flight webhook deliveries
     logger.info("shutdown")

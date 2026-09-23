@@ -80,13 +80,22 @@ async def check_availability(
 ) -> list[Slot]:
     tz = _tz(tenant)
     now = datetime.now(tz)
-    day0 = on_date.astimezone(tz).date() if on_date else now.date()
+    if on_date is None:
+        day0 = now.date()
+    elif on_date.tzinfo is None:
+        # A bare date ("2026-09-27") is a calendar day where the business is. Converting it from UTC
+        # would shift it to the previous day for every time zone west of UTC.
+        day0 = on_date.date()
+    else:
+        day0 = on_date.astimezone(tz).date()
     out: list[Slot] = []
 
     for offset in range(0, horizon_days):
         day = day0 + timedelta(days=offset)
         hours = _hours_for(tenant.business_hours, day.weekday())
         if not hours:
+            if on_date is not None:  # asked about a closed day: say so, never offer another day
+                break
             continue
         cursor = datetime.combine(day, hours[0], tzinfo=tz)
         end_of_day = datetime.combine(day, hours[1], tzinfo=tz)

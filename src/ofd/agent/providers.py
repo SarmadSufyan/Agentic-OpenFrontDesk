@@ -8,6 +8,7 @@ import without the full agent extra installed.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ofd.core.config import settings
@@ -44,16 +45,22 @@ def build_llm() -> Any:
     raise ConfigError(f"No LiveKit LLM plugin wired for LLM_PROVIDER={p!r}")
 
 
-def build_tts() -> Any:
+_KOKORO_VOICE = re.compile(r"^[a-z]{2}_[a-z]+$")  # e.g. af_heart, bm_george
+
+
+def build_tts(voice: str | None = None) -> Any:
+    """Build the TTS plugin. `voice` is the agent's configured voice; for Kokoro it overrides
+    KOKORO_VOICE when it is a valid Kokoro voice id."""
     p = settings.TTS_PROVIDER.lower()
     if p == "kokoro":
         # Kokoro-FastAPI is OpenAI-compatible, so we drive it through the OpenAI TTS plugin.
         from livekit.plugins import openai
 
+        chosen = voice if voice and _KOKORO_VOICE.match(voice) else settings.KOKORO_VOICE
         return openai.TTS(
             base_url=settings.KOKORO_BASE_URL.rstrip("/") + "/v1",
             model="kokoro",
-            voice=settings.KOKORO_VOICE,
+            voice=chosen,
             api_key="not-needed",
         )
     if p == "cartesia":

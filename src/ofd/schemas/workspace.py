@@ -17,6 +17,7 @@ class TenantOut(BaseModel):
     timezone: str
     business_hours: dict = {}
     address: dict = {}
+    settings: dict = {}  # workspace preferences (e.g. onboarded, widget color); merged on update
     plan: str
     created_at: datetime
 

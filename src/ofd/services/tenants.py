@@ -70,6 +70,8 @@ _AGENT_FIELDS = {
 async def update_tenant(db: AsyncSession, tenant: Tenant, data: dict) -> Tenant:
     for k, v in data.items():
         if k in _TENANT_FIELDS and v is not None:
+            if k == "settings":  # merge, so a partial update never wipes other keys
+                v = {**(tenant.settings or {}), **v}
             setattr(tenant, k, v)
     await db.flush()
     return tenant
