@@ -3,7 +3,7 @@
 > Single source of truth for build progress. Updated at the end of every work session.
 > Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ blocked/parked
 
-**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) + M3 (automations) ✅ done → M4 (contact/personalization) next
+**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) + M3 (automations) + M4 (custom solutions) ✅ done → M5 (Next.js frontend) next
 **Last updated:** 2026-09-23
 **Note:** Live voice call verified working end-to-end (Groq `openai/gpt-oss-20b`, Kokoro TTS, turn-detector baked in). Phases 0–4 built; pushed to GitHub (CI green). Now building the SaaS product layer.
 
@@ -128,7 +128,14 @@ chat widget first then automations.
       endpoint, revoke gives 401, audit entries); in-container signed delivery on commit and none on
       rollback; template signature node run on real n8n 2.40 (valid passes, tampered/stale rejected,
       API container to n8n delivery 200).
-- [ ] **M4 — Contact/personalization:** contact form + scheduling link + admin inbox.
+- [x] **M4 — Contact/personalization:** `/contact` form (needs, team size, budget) with an instant
+      prefilled Cal.com/Calendly link; admin + requester emails over SMTP (Mailpit for local dev) and an
+      optional Slack/n8n webhook; `contact_request` table; admin inbox API + dashboard Admin tab (status,
+      notes, meeting, one-click scheduling email, delete) that also surfaces M1's allowlist and live
+      voice sessions; honeypot, per-IP limit, link-spam detection, dedupe, hashed IPs;
+      docs/18-contact-and-personalization.md. Verified: 69 tests; HTTP e2e against a test instance with
+      Mailpit (6 correctly addressed emails, spam got none, 429 on the 6th submit, admin filters,
+      scheduling email, 403 for non-admins); form and Admin tab driven in the browser.
 - [ ] **M5 — Modern frontend (Next.js + shadcn/ui):** landing, auth, onboarding, dashboard, test console.
 - [ ] **M6 — Deploy + launch:** Vercel (frontend) + VPS (backend) + docs + live demo.
 
@@ -264,3 +271,29 @@ OTel/Langfuse, and telephony go-live (Telnyx/Twilio account + number).
   signature (non-ASCII payload), rejected tampered and stale ones, and a real API-to-n8n delivery
   returned 200. Agent image rebuilt and re-registered with LiveKit.
 - Note: `init_db` re-run to create the three new tables.
+
+### 2026-09-23 (SaaS M4 — custom solutions)
+- Contact flow: `contact_request` model, strict `ContactIn` validation (choices served by
+  `/contact/options`), `services/contact.py` (dedupe, spam heuristic, prefilled scheduling links,
+  background notifications, inbox operations), `services/mailer.py` (stdlib SMTP in a thread, optional).
+- `/contact` page (vanilla JS, same look as the dashboard, responsive; prefills for signed-in users).
+- Admin inbox endpoints under `/admin/contact-requests`; `/auth/me` returns `is_admin`; dashboard gains
+  an Admin tab (inbox + voice access: live sessions, queue, allowlist) and a "Custom solutions" link.
+- `quota.hit()` generalises the Redis fixed-window limiter beyond tenants (used per hashed IP).
+- Mailpit service in compose (`mail` profile) for local email.
+- Security review during the build found an XSS path: the first email pattern allowed quotes, and the
+  admin UI put emails inside inline `onclick` handlers (HTML escaping does not protect a JS string in an
+  attribute). Fixed on both sides: strict email charset server-side, `esc()` now escapes quotes, and no
+  user value is placed in an inline handler. Also: `str_strip_whitespace` so whitespace-only names are
+  rejected, and newlines collapsed in single-line fields so they cannot reach email headers.
+- **Verified live:** a second API instance on :8091 with test overrides (admin, SMTP to Mailpit,
+  scheduling link) so `.env` stayed untouched: submit 202 with prefilled Cal.com link; double submit
+  returned the same id; link spam stored as spam with no emails; signed-in submit linked user and
+  workspace; 6th submit 429; Mailpit received 3 admin notifications (Reply-To requester) and 3
+  confirmations (Reply-To admin, prefilled link); inbox counts, status filter and search; meeting time
+  moved status to scheduled; scheduling email delivered with the personal note; bad status 422;
+  non-admin 403 on the main API; delete then 404. In the browser: the form submits through the page JS
+  and shows the booking button; `/app#admin` opens the Admin tab; save, send email, and allowlist add and
+  remove all work; no console errors; no horizontal overflow at 375px. Test rows, containers and
+  rate-limit keys cleaned up afterwards.
+- Note: `init_db` re-run to create `contact_request`.

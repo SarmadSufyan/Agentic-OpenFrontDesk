@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ofd.api.deps import AuthContext, get_context, get_db
+from ofd.core.config import settings
 from ofd.core.exceptions import Unauthorized
 from ofd.core.security import create_access_token, create_refresh_token, decode_token
 from ofd.models.user import User
@@ -73,4 +74,5 @@ async def me(ctx: AuthContext = Depends(get_context), db: AsyncSession = Depends
             MembershipOut(tenant_id=t.id, tenant_name=t.name, tenant_slug=t.slug, role=m.role)
             for m, t in memberships
         ],
+        is_admin=ctx.user.email.lower() in settings.admin_emails,
     )

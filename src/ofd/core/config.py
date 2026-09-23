@@ -142,6 +142,23 @@ class Settings(BaseSettings):
     )
     API_RATE_LIMIT_PER_MIN: int = 120  # per-tenant limit for API-key requests
 
+    # --- Contact / custom solutions ---
+    PUBLIC_BASE_URL: str = "http://localhost:8000"  # used for links in emails
+    SCHEDULING_URL: str = ""  # Cal.com / Calendly link offered after a contact request
+    CONTACT_NOTIFY_EMAILS: str = ""  # who is emailed about new requests (defaults to ADMIN_EMAILS)
+    CONTACT_WEBHOOK_URL: str = ""  # optional Slack / n8n / Zapier hook for new requests
+    CONTACT_RATE_LIMIT_PER_HOUR: int = 5  # submissions per client IP
+    TRUST_PROXY_HEADERS: bool = False  # read the client IP from X-Forwarded-For (behind nginx)
+
+    # --- Email (SMTP) ---
+    SMTP_HOST: str = ""  # empty = email disabled (requests are still stored and shown to admins)
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""  # e.g. "OpenFrontDesk <hello@yourdomain.com>"
+    SMTP_STARTTLS: bool = True
+    SMTP_SSL: bool = False  # implicit TLS (usually port 465)
+
     # ----------------------------------------------------------------- helpers
     @property
     def database_url(self) -> str:
@@ -164,6 +181,11 @@ class Settings(BaseSettings):
     @property
     def access_allowlist(self) -> set[str]:
         return {e.strip().lower() for e in self.ACCESS_ALLOWLIST.split(",") if e.strip()}
+
+    @property
+    def contact_notify_emails(self) -> list[str]:
+        raw = self.CONTACT_NOTIFY_EMAILS or self.ADMIN_EMAILS
+        return sorted({e.strip().lower() for e in raw.split(",") if e.strip()})
 
     @property
     def is_production(self) -> bool:

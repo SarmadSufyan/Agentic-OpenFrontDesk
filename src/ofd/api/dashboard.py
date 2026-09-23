@@ -76,6 +76,7 @@ DASHBOARD_HTML = """<!doctype html>
     <span class="brand">🎙️ OpenFrontDesk</span>
     <span class="ws" id="wsName"></span>
     <span class="sp"></span>
+    <a href="/contact" target="_blank"><button>Custom solutions</button></a>
     <a href="/test" target="_blank"><button>📞 Test call</button></a>
     <button onclick="logout()">Log out</button>
   </header>
@@ -122,12 +123,14 @@ const TABS = [
   ["audit","Audit"]
 ];
 let active = "overview";
+let IS_ADMIN = false, OPTIONS = null, CR_FILTER = {status:"", q:""};
+const CR_STATUSES = ["new","contacted","scheduled","won","lost","spam"];
 function renderTabs(){
   $("tabs").innerHTML = TABS.map(([k,l])=>`<button class="${k===active?'active':''}" onclick="go('${k}')">${l}</button>`).join("");
 }
 function go(k){ active=k; renderTabs(); render(); }
 
-function esc(s){ return (s==null?"":String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function when(s){ return s ? new Date(s).toLocaleString() : "—"; }
 
 async function render(){
@@ -187,6 +190,49 @@ async function render(){
           <div style="height:12px"></div><button class="primary" onclick="saveAgent()">Save</button>
           <div id="aMsg"></div>
         </div>`;
+    } else if (active==="admin"){
+      if (!OPTIONS) OPTIONS = await api("/contact/options");
+      const qs = new URLSearchParams({limit:"100"});
+      if (CR_FILTER.status) qs.set("status", CR_FILTER.status);
+      if (CR_FILTER.q) qs.set("q", CR_FILTER.q);
+      const [page, sessions, allow] = await Promise.all([
+        api("/admin/contact-requests?" + qs), api("/admin/voice/sessions"), api("/admin/allowlist")]);
+      const c = page.counts;
+      const rows = page.items.length ? `<table><tr><th>Received</th><th>From</th><th>Needs</th><th>Status</th><th></th></tr>` +
+        page.items.map(r=>`<tr><td>${when(r.created_at)}</td>
+          <td><b>${esc(r.name)}</b>${r.company ? " · "+esc(r.company) : ""}<div class="muted">${esc(r.email)}</div></td>
+          <td>${r.needs.map(n=>esc(OPTIONS.needs[n]||n)).join(", ") || "—"}</td>
+          <td>${pill(r.status)}</td><td><button onclick="openRequest('${r.id}')">Open</button></td></tr>`).join("") + `</table>`
+        : '<p class="muted">No requests match.</p>';
+      v.innerHTML = `<h2>Custom-solution requests</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="n">${c.new}</div><div class="l">New</div></div>
+          <div class="kpi"><div class="n">${c.contacted}</div><div class="l">Contacted</div></div>
+          <div class="kpi"><div class="n">${c.scheduled}</div><div class="l">Call scheduled</div></div>
+          <div class="kpi"><div class="n">${c.won}</div><div class="l">Won</div></div>
+        </div>
+        <div class="row" style="align-items:flex-end;margin-bottom:12px">
+          <div><label>Status</label><select id="crStatus" onchange="CR_FILTER.status=this.value;render()">
+            <option value="">All (${page.total})</option>${CR_STATUSES.map(s=>`<option value="${s}" ${s===CR_FILTER.status?"selected":""}>${s} (${c[s]||0})</option>`).join("")}</select></div>
+          <div><label>Search</label><input id="crQ" value="${esc(CR_FILTER.q)}" placeholder="Name, email, company, message"
+            onkeydown="if(event.key==='Enter'){CR_FILTER.q=this.value.trim();render()}"></div>
+        </div>
+        ${rows}
+        <div id="crDetail" style="margin-top:14px"></div>
+        <h2 style="margin-top:30px">Voice access</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="n">${sessions.active.length} / ${sessions.capacity}</div><div class="l">Live voice sessions</div></div>
+          <div class="kpi"><div class="n">${sessions.queue.length}</div><div class="l">Waiting in queue</div></div>
+          <div class="kpi"><div class="n">${allow.length}</div><div class="l">Priority allowlist</div></div>
+        </div>
+        <div class="card"><b>Give someone priority access</b>
+          <p class="muted">Allowlisted emails skip the voice queue even when every slot is taken.</p>
+          <div class="row"><div><label>Email</label><input id="alEmail" placeholder="person@company.com"></div>
+            <div><label>Note (optional)</label><input id="alNote" placeholder="e.g. pilot customer"></div></div>
+          <div style="height:10px"></div><button class="primary" onclick="addAllow()">Add to allowlist</button>
+          <div id="alMsg"></div>
+        </div>` + table(allow, ["email","note","created_at",""], ["Email","Note","Added",""],
+          r=>({created_at:when(r.created_at), "":`<button data-email="${esc(r.email)}" onclick="removeAllow(this.dataset.email)">Remove</button>`}));
     } else if (active==="integrations"){
       const [events, hooks, keys] = await Promise.all([
         api("/integrations/events"), api("/integrations/webhooks"), api("/integrations/api-keys")]);
@@ -261,6 +307,80 @@ async function saveAgent(){
   try { await api("/agents/current",{method:"PUT",body:JSON.stringify({name:$("a_name").value,voice:$("a_voice").value,tone:$("a_tone").value,greeting:$("a_greeting").value})});
     $("aMsg").innerHTML='<div class="msg ok">Saved.</div>';
   } catch(e){ $("aMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+
+function toLocalInput(iso){
+  if(!iso) return "";
+  const d = new Date(iso); const p = (n)=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+async function openRequest(id){
+  const d = $("crDetail"); d.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const r = await api("/admin/contact-requests/" + id);
+    const f = (label, val) => val ? `<div><span class="muted">${label}:</span> ${esc(val)}</div>` : "";
+    d.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(r.name)}${r.company ? " · "+esc(r.company) : ""}</h3>
+      <div class="row"><div>
+        ${f("Email", r.email)}${f("Phone", r.phone)}${f("Website", r.website)}${f("Team size", r.team_size)}
+        ${f("Budget", r.budget)}${f("Needs", r.needs.map(n=>OPTIONS.needs[n]||n).join(", "))}
+        ${f("Received", when(r.created_at))}${f("Source", r.source)}${r.user_id ? '<div class="muted">Signed-in user</div>' : ""}
+        ${f("Last contacted", r.last_contacted_at ? when(r.last_contacted_at) : "")}${f("Handled by", r.handled_by)}
+      </div></div>
+      <label>Message</label><div class="transcript" style="white-space:pre-wrap">${esc(r.message)}</div>
+      <div class="row">
+        <div><label>Status</label><select id="crSt">${CR_STATUSES.map(s=>`<option ${s===r.status?"selected":""}>${s}</option>`).join("")}</select></div>
+        <div><label>Meeting time</label><input id="crAt" type="datetime-local" value="${toLocalInput(r.meeting_at)}"></div>
+        <div><label>Meeting link</label><input id="crLink" value="${esc(r.meeting_link||"")}" placeholder="https://meet..."></div>
+      </div>
+      <label>Internal notes</label><textarea id="crNotes" rows="3">${esc(r.notes||"")}</textarea>
+      <div style="height:10px"></div>
+      <button class="primary" onclick="saveRequest('${r.id}')">Save</button>
+      <a href="mailto:${esc(r.email)}"><button type="button">Reply by email</button></a>
+      <button onclick="deleteRequest('${r.id}')">Delete</button>
+      <div id="crMsg"></div>
+      <div class="card" style="margin-top:14px;background:var(--surface-2)"><b>Send a scheduling email</b>
+        <p class="muted">Emails ${esc(r.email)} a personal note with your booking link, prefilled with their name and
+          email, and marks the request as contacted. Uses SCHEDULING_URL unless you paste another link.</p>
+        <label>Personal note (optional)</label><textarea id="crNote" rows="3" placeholder="Leave empty for the default message"></textarea>
+        <label>Booking link (optional)</label><input id="crSched" placeholder="Defaults to SCHEDULING_URL">
+        <div style="height:10px"></div><button class="primary" onclick="sendScheduling('${r.id}')">Send email</button>
+        <div id="crSendMsg"></div>
+      </div></div>`;
+    d.scrollIntoView({behavior:"smooth"});
+  } catch(e){ d.innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function saveRequest(id){
+  $("crMsg").innerHTML="";
+  try {
+    const at = $("crAt").value;
+    await api("/admin/contact-requests/" + id, {method:"PATCH", body:JSON.stringify({
+      status:$("crSt").value, notes:$("crNotes").value, meeting_link:$("crLink").value.trim()||null,
+      meeting_at: at ? new Date(at).toISOString() : null})});
+    $("crMsg").innerHTML='<div class="msg ok">Saved.</div>';
+    setTimeout(()=>{ render().then(()=>openRequest(id)); }, 500);
+  } catch(e){ $("crMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function sendScheduling(id){
+  $("crSendMsg").innerHTML="";
+  try {
+    await api(`/admin/contact-requests/${id}/scheduling-email`, {method:"POST", body:JSON.stringify({
+      message:$("crNote").value.trim()||null, link:$("crSched").value.trim()||null})});
+    $("crSendMsg").innerHTML='<div class="msg ok">Email sent.</div>';
+    setTimeout(()=>{ render().then(()=>openRequest(id)); }, 700);
+  } catch(e){ $("crSendMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function deleteRequest(id){
+  if(!confirm("Permanently delete this request and the person's details?")) return;
+  try { await api("/admin/contact-requests/" + id, {method:"DELETE"}); render(); } catch(e){ alert(e.message); }
+}
+async function addAllow(){
+  $("alMsg").innerHTML="";
+  try { await api("/admin/allowlist",{method:"POST",body:JSON.stringify({email:$("alEmail").value.trim(), note:$("alNote").value.trim()||null})}); render(); }
+  catch(e){ $("alMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function removeAllow(email){
+  if(!confirm("Remove " + email + " from the allowlist?")) return;
+  try { await api("/admin/allowlist/" + encodeURIComponent(email),{method:"DELETE"}); render(); } catch(e){ alert(e.message); }
 }
 
 function showSecret(title, value, note){
@@ -340,6 +460,9 @@ async function boot(){
     const me = await api("/auth/me");
     const ws = (me.memberships&&me.memberships[0]) ? me.memberships[0].tenant_name : "";
     $("wsName").textContent = ws ? ("· "+ws) : "";
+    IS_ADMIN = !!me.is_admin;
+    if (IS_ADMIN && !TABS.some(t=>t[0]==="admin")) TABS.push(["admin","Admin"]);
+    if (IS_ADMIN && location.hash === "#admin") active = "admin";
     $("login").classList.add("hidden"); $("app").classList.remove("hidden");
     renderTabs(); render();
   } catch(e){ logout(); }

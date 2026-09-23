@@ -50,3 +50,4 @@ class MembershipOut(BaseModel):
 class MeOut(BaseModel):
     user: UserOut
     memberships: list[MembershipOut]
+    is_admin: bool = False  # platform admin (ADMIN_EMAILS): contact inbox, allowlist, sessions

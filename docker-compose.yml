@@ -4,6 +4,7 @@
 # With free TTS:  docker compose --profile tts up -d kokoro
 # Agent (P1+):    docker compose --profile agent up -d agent
 # Automations:    docker compose --profile automation up -d n8n
+# Dev email:      docker compose --profile mail up -d mailpit   (inbox UI at http://localhost:8025)
 
 services:
   db:
@@ -85,6 +86,16 @@ services:
       - "5678:5678"
     volumes:
       - n8ndata:/home/node/.n8n
+
+  # Local email catcher for development: every email the API sends shows up at http://localhost:8025
+  # instead of reaching real inboxes. In .env: SMTP_HOST=mailpit SMTP_PORT=1025 SMTP_STARTTLS=false
+  # SMTP_FROM="OpenFrontDesk <hello@openfrontdesk.local>"
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: ["mail"]
+    ports:
+      - "8025:8025"   # web UI
+      - "1025:1025"   # SMTP
 
 volumes:
   pgdata:

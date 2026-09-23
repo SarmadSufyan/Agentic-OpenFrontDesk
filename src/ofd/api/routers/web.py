@@ -28,6 +28,7 @@ _LANDING = f"""<!doctype html>
  <p>Open-source AI voice receptionist · v{__version__}</p>
  <a class="btn" href="/app">🖥️ Dashboard</a>
  <a class="btn" href="/test">📞 Try a test call</a>
+ <a class="btn ghost" href="/contact">Custom solutions</a>
  <a class="btn ghost" href="/docs">API docs</a>
 </div></body></html>"""
 

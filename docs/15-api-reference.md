@@ -65,6 +65,16 @@ Public API (workspace API key in `X-API-Key` or `Authorization: Bearer`):
 - `GET|POST /v1/leads` · `GET /v1/availability` · `GET|POST /v1/bookings`
 - `GET /v1/calls` · `GET /v1/calls/{id}`
 
+## Contact and admin inbox (SaaS M4), implemented
+Guide: [18-contact-and-personalization.md](18-contact-and-personalization.md).
+
+Public: `GET /contact` (form page) · `GET /contact/options` · `POST /contact`
+
+Admin (`ADMIN_EMAILS`):
+- `GET /admin/contact-requests` · `GET|PATCH|DELETE /admin/contact-requests/{id}`
+- `POST /admin/contact-requests/{id}/scheduling-email`
+- `GET|POST /admin/allowlist`, `DELETE /admin/allowlist/{email}` · `GET /admin/voice/sessions`
+
 ## Conventions
 - Errors: JSON problem shape `{ "error": { "code", "message", "details" } }`.
 - Pagination: `?limit=&cursor=`. Timestamps ISO-8601 UTC. IDs are UUIDs.

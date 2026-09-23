@@ -43,6 +43,10 @@ month on infrastructure you already own, and upgrade to premium providers per cl
   REST API, with ready-to-import n8n workflows: leads to Google Sheets and Slack, call transcripts by
   email, and the same trained agent answering on WhatsApp. Works with Zapier and Make too.
   See [docs/17-automations.md](docs/17-automations.md).
+- **Custom solutions pipeline.** A contact form for companies that want a tailored setup (WhatsApp, HR
+  helpdesk, integrations), with an instant prefilled booking link, email and Slack notifications, and an
+  admin inbox to track each request to a call. See
+  [docs/18-contact-and-personalization.md](docs/18-contact-and-personalization.md).
 - **Free to demo.** Testing uses the browser microphone over LiveKit's free tier; a real phone number is
   only added at go-live.
 
@@ -62,6 +66,8 @@ Then open:
 - `http://localhost:8000/app` - dashboard (login `demo@openfrontdesk.local` / `demodemo12`)
 - `http://localhost:8000/docs` - full API (Swagger)
 - `http://localhost:8000/test` - talk to the agent in the browser (needs LiveKit and Groq keys)
+- `http://localhost:8000/widget-demo` - the embeddable chat widget
+- `http://localhost:8000/contact` - the custom-solutions request form
 
 If port 8000 is already in use, set `API_HOST_PORT=8080` in `.env`. On Windows without `make`, run
 `scripts/demo.ps1` (or the commands in the `Makefile` demo target).

@@ -23,10 +23,15 @@ async def check_rate(
     Returns (allowed, remaining). Fails open (allowed) if Redis is unreachable — availability over
     strictness for a rate limiter.
     """
+    return await hit(f"{tenant_id}:{resource}", limit, window_seconds)
+
+
+async def hit(subject: str, limit: int, window_seconds: int = 60) -> tuple[bool, int]:
+    """Fixed-window counter for any subject (a tenant resource, a hashed client IP, ...)."""
     import redis.asyncio as aioredis
 
     bucket = int(time.time() // window_seconds)
-    key = f"rl:{tenant_id}:{resource}:{bucket}"
+    key = f"rl:{subject}:{bucket}"
     client = aioredis.from_url(settings.REDIS_URL)
     try:
         count = int(await client.incr(key))
