@@ -10,15 +10,18 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install deps first for better layer caching
+# Dependency layer: install against a stub package so this layer is only rebuilt when
+# pyproject.toml changes, not on every source edit. The editable install points at /app/src,
+# so the real code copied below is what runs.
+# The API only needs core + rag (document parsing + local embeddings); provider SDKs live in the agent.
 COPY pyproject.toml README.md ./
+RUN mkdir -p src/ofd && touch src/ofd/__init__.py && pip install -e ".[rag]"
+
+# Source layer (fast to rebuild).
 COPY src ./src
 COPY migrations ./migrations
 COPY scripts ./scripts
 COPY alembic.ini ./
-# The API only needs core + rag (document parsing + local fastembed embeddings for ingestion).
-# The LLM/STT/TTS provider SDKs live in the agent worker image, not here — keeps this build fast.
-RUN pip install -e ".[rag]"
 
 EXPOSE 8000
 

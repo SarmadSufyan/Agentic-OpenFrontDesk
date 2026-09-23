@@ -11,14 +11,17 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
+# Dependency layer: install against a stub package so it is only rebuilt when pyproject.toml
+# changes. agent = livekit-agents + realtime plugins; rag = local embeddings for search_knowledge.
 COPY pyproject.toml README.md ./
-COPY src ./src
-# agent = livekit-agents + realtime plugins; rag = local embeddings for the search_knowledge tool.
-# (The raw provider SDKs are not needed here; the realtime path uses LiveKit plugins.)
-RUN pip install -e ".[agent,rag]"
+RUN mkdir -p src/ofd && touch src/ofd/__init__.py && pip install -e ".[agent,rag]"
 
-# Pre-download plugin model files (Silero VAD, turn detector) so the first call is not slow.
-RUN ofd-agent download-files || true
+# Bake plugin model files (Silero VAD, turn detector) into this cached layer so neither code
+# edits nor the first call trigger a download.
+RUN python -c "from livekit.plugins import silero, turn_detector; from livekit.agents import Plugin; [p.download_files() for p in Plugin.registered_plugins]"
+
+# Source layer (fast to rebuild).
+COPY src ./src
 
 # LiveKit CLI needs a subcommand; "start" runs the worker in production mode.
 CMD ["ofd-agent", "start"]
