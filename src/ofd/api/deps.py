@@ -1,9 +1,10 @@
 """FastAPI dependencies: DB session, authenticated user, tenant scoping, roles.
 
-Two ways to resolve the tenant:
+Ways to resolve the tenant:
 - `get_context` / `get_current_user`: require a valid Bearer access token (production path).
 - `get_active_tenant_id`: token if present, else (dev only) `?tenant=<slug>` defaulting to "demo" —
   keeps the pre-auth knowledge/voice demo usable while auth exists alongside it.
+- `get_api_context`: a tenant API key, for the public /v1 API used by automation tools.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from fastapi import Depends, Query
+from fastapi import Depends, Header, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +20,10 @@ from ofd.core.config import settings
 from ofd.core.exceptions import Forbidden, TooManyRequests, Unauthorized
 from ofd.core.security import decode_token
 from ofd.db.session import get_db
+from ofd.models.automation import ApiKey
 from ofd.models.tenant import Tenant
 from ofd.models.user import User
+from ofd.services import apikeys as apikeys_svc
 from ofd.services import auth as auth_svc
 from ofd.services import quota as quota_svc
 from ofd.services import tenants as tenants_svc
@@ -31,10 +34,12 @@ __all__ = [
     "get_context",
     "get_active_tenant_id",
     "get_voice_identity",
+    "get_api_context",
     "require_roles",
     "require_admin",
     "rate_limit",
     "AuthContext",
+    "ApiContext",
 ]
 
 bearer = HTTPBearer(auto_error=False)
@@ -128,6 +133,39 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.email.lower() not in settings.admin_emails:
         raise Forbidden("Admin access required")
     return user
+
+
+@dataclass
+class ApiContext:
+    tenant: Tenant
+    key: ApiKey
+
+
+async def get_api_context(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> ApiContext:
+    """Authenticate a public-API request by tenant API key and apply the per-tenant API limit.
+
+    Accepts `Authorization: Bearer ofd_live_...` or `X-API-Key: ofd_live_...`.
+    """
+    raw = x_api_key or (creds.credentials if creds else None)
+    key = await apikeys_svc.resolve_key(db, raw or "")
+    if key is None:
+        raise Unauthorized("Valid API key required")
+    tenant = await db.get(Tenant, key.tenant_id)
+    if tenant is None:
+        raise Unauthorized("Workspace not found")
+    if settings.RATE_LIMIT_ENABLED:
+        allowed, _ = await quota_svc.check_rate(
+            tenant.id, "api", settings.API_RATE_LIMIT_PER_MIN, 60
+        )
+        if not allowed:
+            raise TooManyRequests(
+                f"API rate limit exceeded ({settings.API_RATE_LIMIT_PER_MIN}/min)"
+            )
+    return ApiContext(tenant=tenant, key=key)
 
 
 async def get_voice_identity(

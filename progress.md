@@ -3,7 +3,7 @@
 > Single source of truth for build progress. Updated at the end of every work session.
 > Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ blocked/parked
 
-**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) ✅ done → M3 (automations) next
+**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) + M3 (automations) ✅ done → M4 (contact/personalization) next
 **Last updated:** 2026-09-23
 **Note:** Live voice call verified working end-to-end (Groq `openai/gpt-oss-20b`, Kokoro TTS, turn-detector baked in). Phases 0–4 built; pushed to GitHub (CI green). Now building the SaaS product layer.
 
@@ -118,7 +118,16 @@ chat widget first then automations.
       LLM via httpx + the same tools), public per-tenant endpoints (`/widget.js`, `/widget/{slug}/config`,
       `/widget/{slug}/chat`), a `/widget-demo` page, open CORS, rate-limited. Verified: grounded $250
       answer with sources; refuses to invent; leads/bookings flow to the dashboard.
-- [ ] **M3 — Automations:** outbound webhooks + API keys + n8n template.
+- [x] **M3 — Automations:** signed outbound webhooks (`lead.created`, `booking.created`,
+      `call.completed`, `knowledge.ready`) with HMAC-SHA256, retries/backoff, delivery log, auto-disable,
+      SSRF guard (checked on save and on every send), dispatched only after the DB transaction commits;
+      hashed workspace API keys + public `/v1` API (me, chat, knowledge search, leads, availability,
+      bookings, calls); dashboard Integrations tab; 3 n8n templates (leads to Sheets+Slack, call
+      transcript email, WhatsApp answered by the agent); optional n8n compose profile;
+      docs/17-automations.md. Verified: 46 tests; HTTP e2e (SSRF 422, key lifecycle, every /v1
+      endpoint, revoke gives 401, audit entries); in-container signed delivery on commit and none on
+      rollback; template signature node run on real n8n 2.40 (valid passes, tampered/stale rejected,
+      API container to n8n delivery 200).
 - [ ] **M4 — Contact/personalization:** contact form + scheduling link + admin inbox.
 - [ ] **M5 — Modern frontend (Next.js + shadcn/ui):** landing, auth, onboarding, dashboard, test console.
 - [ ] **M6 — Deploy + launch:** Vercel (frontend) + VPS (backend) + docs + live demo.
@@ -230,3 +239,28 @@ OTel/Langfuse, and telephony go-live (Telnyx/Twilio account + number).
   configurable (`API_HOST_PORT`, docker-compose) and set it to **8080** for this machine.
 - Verified live: db+redis healthy, `scripts/init_db.py` OK, `/health` + `/health?deep=1` green.
 - Phase 0 acceptance met on the user's host. Next test: Phase 2A RAG (seed + search), no API keys.
+
+### 2026-09-23 (SaaS M3 — automations)
+- Docker builds now cache the dependency layer (install against a stub package, then copy `src`); the
+  agent image also bakes the Silero and turn-detector model files. Source-only rebuilds of the API
+  dropped from minutes to seconds.
+- Webhooks: `webhook_endpoint` / `webhook_delivery` tables, `services/webhooks.py` (HMAC signing,
+  SSRF guard, retries with backoff, delivery log, auto-disable). Events are queued on the DB session
+  and dispatched from an `after_commit` hook, so a rolled-back request never announces data that does
+  not exist. First version used `after_rollback` to drop queued events; a unit test showed it does not
+  fire for a rollback that never touched the DB, so it now uses `after_soft_rollback` (ignoring
+  savepoints).
+- API keys: `api_key` table, SHA-256 hashed, shown once, `last_used_at` throttled, revocable;
+  `get_api_context` dependency with a per-workspace rate limit.
+- Routers: `/integrations/*` (owner/admin; audit-logged) and the public `/v1` API. Dashboard gained an
+  Integrations tab (show-once secrets, test button, delivery log, key management).
+- n8n: three templates + README; `n8n` compose service under the `automation` profile
+  (`NODE_FUNCTION_ALLOW_BUILTIN=crypto` for the signature Code node).
+- **Verified live:** 46 tests pass; SSRF rejects loopback and the cloud metadata IP (422); unknown event
+  rejected; list views hide secrets; key lifecycle incl. Bearer form and revoke giving 401; every `/v1`
+  endpoint (chat answered "$90" for a cleaning, grounded); a public endpoint delivery returned 405 and
+  was correctly not retried; in-container receiver got `lead.created` + `booking.created` with valid
+  signatures and nothing for the rolled-back lead; on n8n 2.40 the template's Code node accepted a valid
+  signature (non-ASCII payload), rejected tampered and stale ones, and a real API-to-n8n delivery
+  returned 200. Agent image rebuilt and re-registered with LiveKit.
+- Note: `init_db` re-run to create the three new tables.

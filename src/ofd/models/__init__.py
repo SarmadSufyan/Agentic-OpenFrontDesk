@@ -4,6 +4,7 @@ from ofd.db.base import Base
 from ofd.models.access import AllowlistEntry
 from ofd.models.agent import Agent, PhoneNumber
 from ofd.models.audit import AuditLog
+from ofd.models.automation import ApiKey, WebhookDelivery, WebhookEndpoint
 from ofd.models.booking import Booking
 from ofd.models.call import Call, CallEvent
 from ofd.models.integration import Integration
@@ -22,6 +23,9 @@ __all__ = [
     "PhoneNumber",
     "AuditLog",
     "AllowlistEntry",
+    "WebhookEndpoint",
+    "WebhookDelivery",
+    "ApiKey",
     "KnowledgeDoc",
     "DocChunk",
     "Call",

@@ -43,6 +43,7 @@ from ofd.db.session import session_scope
 from ofd.models.enums import CallDirection, CallOutcome
 from ofd.services import calls as calls_svc
 from ofd.services import tenants as tenants_svc
+from ofd.services import webhooks as webhooks_svc
 
 logger = get_logger("ofd.agent")
 
@@ -218,6 +219,9 @@ async def entrypoint(ctx: JobContext) -> None:
                     )
             except Exception as exc:
                 logger.warning("call_finalize_failed", error=str(exc))
+        # Webhooks (call.completed, leads, bookings) are fire-and-forget; let them finish before
+        # the job process exits.
+        await webhooks_svc.drain(8.0)
 
     ctx.add_shutdown_callback(_on_shutdown)
 

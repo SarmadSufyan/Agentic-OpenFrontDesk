@@ -118,7 +118,8 @@ function logout(){ TOKEN=null; try{localStorage.removeItem("ofd_token");}catch(e
 
 const TABS = [
   ["overview","Overview"],["calls","Calls"],["bookings","Bookings"],
-  ["leads","Leads"],["knowledge","Knowledge"],["agent","Agent"],["audit","Audit"]
+  ["leads","Leads"],["knowledge","Knowledge"],["agent","Agent"],["integrations","Integrations"],
+  ["audit","Audit"]
 ];
 let active = "overview";
 function renderTabs(){
@@ -186,6 +187,57 @@ async function render(){
           <div style="height:12px"></div><button class="primary" onclick="saveAgent()">Save</button>
           <div id="aMsg"></div>
         </div>`;
+    } else if (active==="integrations"){
+      const [events, hooks, keys] = await Promise.all([
+        api("/integrations/events"), api("/integrations/webhooks"), api("/integrations/api-keys")]);
+      const checks = events.map(e=>`<label style="display:flex;gap:8px;align-items:center;margin:4px 0;color:var(--ink)">
+          <input type="checkbox" class="wh_ev" value="${esc(e.type)}" style="width:auto"> <code>${esc(e.type)}</code>
+          <span class="muted">${esc(e.description)}</span></label>`).join("");
+      const hookRows = hooks.length ? `<table><tr><th>URL</th><th>Events</th><th>Status</th><th>Last</th><th></th></tr>` +
+        hooks.map(h=>`<tr><td style="word-break:break-all">${esc(h.url)}<div class="muted">${esc(h.description||"")}</div></td>
+          <td>${h.events.map(esc).join(", ")}</td>
+          <td>${h.is_active ? pill("active") : pill("disabled")}${h.failure_count ? ` <span class="muted">${h.failure_count} failed</span>` : ""}</td>
+          <td>${h.last_status ?? "—"}<div class="muted">${when(h.last_delivery_at)}</div></td>
+          <td style="white-space:nowrap"><button onclick="testHook('${h.id}')">Test</button>
+            <button onclick="hookLog('${h.id}')">Log</button>
+            <button onclick="toggleHook('${h.id}',${!h.is_active})">${h.is_active?"Disable":"Enable"}</button>
+            <button onclick="rotateHook('${h.id}')">Rotate</button>
+            <button onclick="deleteHook('${h.id}')">Delete</button></td></tr>`).join("") + `</table>`
+        : '<p class="muted">No webhooks yet.</p>';
+      const keyRows = keys.length ? `<table><tr><th>Name</th><th>Key</th><th>Last used</th><th>Status</th><th></th></tr>` +
+        keys.map(k=>`<tr><td>${esc(k.name)}</td><td><code>${esc(k.prefix)}...</code></td><td>${when(k.last_used_at)}</td>
+          <td>${k.revoked_at ? pill("revoked") : pill("active")}</td>
+          <td>${k.revoked_at ? "" : `<button onclick="revokeKey('${k.id}')">Revoke</button>`}</td></tr>`).join("") + `</table>`
+        : '<p class="muted">No API keys yet.</p>';
+      v.innerHTML = `<h2>Integrations</h2>
+        <p class="muted">Connect OpenFrontDesk to n8n, Zapier, Make, or your own code. Webhooks push events out as
+          they happen; API keys let workflows act back on this workspace. Templates and signature-verification
+          code are in <code>integrations/n8n</code> and <code>docs/17-automations.md</code>.</p>
+        <div id="secretBox"></div>
+        <div class="card"><b>Add a webhook</b>
+          <label>Endpoint URL</label><input id="wh_url" placeholder="https://your-n8n.example.com/webhook/openfrontdesk">
+          <label>Description (optional)</label><input id="wh_desc" placeholder="e.g. Leads to Google Sheets + Slack">
+          <label>Events (none selected = all events)</label>${checks}
+          <div style="height:10px"></div><button class="primary" onclick="addHook()">Add webhook</button>
+          <div id="whMsg"></div>
+        </div>
+        ${hookRows}
+        <div id="hookLog" style="margin-top:14px"></div>
+        <div style="height:18px"></div>
+        <div class="card"><b>Create an API key</b>
+          <div class="row"><div><label>Name</label><input id="key_name" placeholder="e.g. n8n production"></div></div>
+          <div style="height:10px"></div><button class="primary" onclick="addKey()">Create key</button>
+          <div id="keyMsg"></div>
+        </div>
+        ${keyRows}
+        <div class="card" style="margin-top:14px"><b>Quick start</b>
+          <pre class="transcript" style="white-space:pre-wrap">curl ${esc(location.origin)}/v1/chat \\\\
+  -H "X-API-Key: ofd_live_..." -H "Content-Type: application/json" \\\\
+  -d '{"message": "What are your opening hours?"}'</pre>
+          <p class="muted">Endpoints: <code>GET /v1/me</code>, <code>POST /v1/chat</code>, <code>GET /v1/knowledge/search</code>,
+            <code>GET|POST /v1/leads</code>, <code>GET /v1/availability</code>, <code>GET|POST /v1/bookings</code>,
+            <code>GET /v1/calls</code>. Full reference at <a href="/docs#/public-api" target="_blank">/docs</a>.</p>
+        </div>`;
     }
   } catch(err){ v.innerHTML = '<div class="msg err">'+esc(err.message)+'</div>'; }
 }
@@ -209,6 +261,63 @@ async function saveAgent(){
   try { await api("/agents/current",{method:"PUT",body:JSON.stringify({name:$("a_name").value,voice:$("a_voice").value,tone:$("a_tone").value,greeting:$("a_greeting").value})});
     $("aMsg").innerHTML='<div class="msg ok">Saved.</div>';
   } catch(e){ $("aMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+
+function showSecret(title, value, note){
+  $("secretBox").innerHTML = `<div class="card" style="border-color:var(--accent)"><b>${esc(title)}</b>
+    <p class="muted">${esc(note)}</p><pre class="transcript" style="user-select:all;word-break:break-all">${esc(value)}</pre>
+    <button onclick="navigator.clipboard.writeText('${esc(value)}')">Copy</button>
+    <button onclick="$('secretBox').innerHTML=''">I have saved it</button></div>`;
+  window.scrollTo(0,0);
+}
+async function addHook(){
+  $("whMsg").innerHTML="";
+  try {
+    const events = [...document.querySelectorAll(".wh_ev:checked")].map(c=>c.value);
+    const h = await api("/integrations/webhooks",{method:"POST",body:JSON.stringify({
+      url:$("wh_url").value.trim(), description:$("wh_desc").value.trim()||null, events: events.length?events:["*"]})});
+    await render();
+    showSecret("Webhook signing secret", h.secret, "Use it to verify the X-OFD-Signature header. It is shown only once; rotate it to get a new one.");
+  } catch(e){ $("whMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function testHook(id){
+  try { const d = await api(`/integrations/webhooks/${id}/test`,{method:"POST"});
+    alert(d.success ? `Delivered (HTTP ${d.status_code}, ${d.duration_ms} ms)` : `Failed: ${d.error || ("HTTP "+d.status_code)}`);
+    render();
+  } catch(e){ alert(e.message); }
+}
+async function toggleHook(id, on){
+  try { await api(`/integrations/webhooks/${id}`,{method:"PATCH",body:JSON.stringify({is_active:on})}); render(); }
+  catch(e){ alert(e.message); }
+}
+async function rotateHook(id){
+  if(!confirm("Rotate the signing secret? Receivers using the old secret will start rejecting deliveries.")) return;
+  try { const h = await api(`/integrations/webhooks/${id}/rotate-secret`,{method:"POST"}); await render();
+    showSecret("New webhook signing secret", h.secret, "Update your receiver with this secret. It is shown only once.");
+  } catch(e){ alert(e.message); }
+}
+async function deleteHook(id){
+  if(!confirm("Delete this webhook and its delivery log?")) return;
+  try { await api(`/integrations/webhooks/${id}`,{method:"DELETE"}); render(); } catch(e){ alert(e.message); }
+}
+async function hookLog(id){
+  const d = $("hookLog"); d.innerHTML = '<p class="muted">Loading…</p>';
+  try { const rows = await api(`/integrations/webhooks/${id}/deliveries`);
+    d.innerHTML = `<h3>Recent deliveries</h3>` + table(rows, ["created_at","event","success","status_code","attempts","duration_ms","error"],
+      ["When","Event","Result","HTTP","Tries","ms","Error"],
+      r=>({created_at:when(r.created_at), success: r.success ? pill("ok") : pill("failed")}));
+  } catch(e){ d.innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function addKey(){
+  $("keyMsg").innerHTML="";
+  try { const k = await api("/integrations/api-keys",{method:"POST",body:JSON.stringify({name:$("key_name").value.trim()})});
+    await render();
+    showSecret("New API key", k.key, "Send it as the X-API-Key header. It is shown only once and stored only as a hash.");
+  } catch(e){ $("keyMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+async function revokeKey(id){
+  if(!confirm("Revoke this key? Workflows using it will stop working immediately.")) return;
+  try { await api(`/integrations/api-keys/${id}`,{method:"DELETE"}); render(); } catch(e){ alert(e.message); }
 }
 
 async function viewCall(id){

@@ -39,6 +39,10 @@ month on infrastructure you already own, and upgrade to premium providers per cl
   takes a message instead of guessing.
 - **Operations built in.** JWT auth, per-tenant rate limiting, PII-redacted logs, a metrics endpoint, and
   an audit log.
+- **Automations.** Signed, retried webhooks (lead, booking, call, knowledge events) and a key-authenticated
+  REST API, with ready-to-import n8n workflows: leads to Google Sheets and Slack, call transcripts by
+  email, and the same trained agent answering on WhatsApp. Works with Zapier and Make too.
+  See [docs/17-automations.md](docs/17-automations.md).
 - **Free to demo.** Testing uses the browser microphone over LiveKit's free tier; a real phone number is
   only added at go-live.
 
@@ -85,12 +89,13 @@ receptionist costs 15 to 25 dollars an hour.
 ## Project layout
 
 ```
-src/ofd/     api, agent (voice worker), rag, services, providers, models
-eval/        scenario suite, scorers, and the text-mode runner (the eval harness)
-docs/        one file per aspect (architecture, RAG, costing, security, and so on)
-deploy/      Dockerfiles and nginx
-scripts/     init_db.py, seed_demo.py, demo helpers
-progress.md  living build log
+src/ofd/       api, agent (voice worker), rag, services, providers, models
+eval/          scenario suite, scorers, and the text-mode runner (the eval harness)
+docs/          one file per aspect (architecture, RAG, costing, security, and so on)
+integrations/  ready-to-import n8n workflows
+deploy/        Dockerfiles and nginx
+scripts/       init_db.py, seed_demo.py, demo helpers
+progress.md    living build log
 ```
 
 Start with [docs/00-overview.md](docs/00-overview.md) and

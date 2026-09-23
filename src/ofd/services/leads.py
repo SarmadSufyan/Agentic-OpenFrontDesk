@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ofd.models.lead import Lead
+from ofd.services import webhooks
 
 
 async def capture_lead(
@@ -34,7 +35,21 @@ async def capture_lead(
     )
     db.add(lead)
     await db.flush()
+    webhooks.emit_on_commit(db, tenant_id, "lead.created", lead_payload(lead))
     return lead
+
+
+def lead_payload(lead: Lead) -> dict:
+    return {
+        "id": str(lead.id),
+        "name": lead.name,
+        "phone": lead.phone,
+        "email": lead.email,
+        "intent": lead.intent,
+        "message": lead.message,
+        "tags": lead.tags or [],
+        "call_id": str(lead.call_id) if lead.call_id else None,
+    }
 
 
 async def list_leads(db: AsyncSession, *, tenant_id: uuid.UUID, limit: int = 100) -> list[Lead]:

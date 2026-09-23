@@ -50,6 +50,21 @@ REST + JSON. Auth via `Authorization: Bearer <jwt>`. Interactive OpenAPI at `/do
 - `POST /webhooks/telephony` — inbound call/SIP events ⬜
 - `POST /webhooks/calcom` — booking sync ⬜
 
+## Automations (SaaS M3), implemented
+Full guide, event payloads and signature verification: [17-automations.md](17-automations.md).
+
+Management (JWT, owner/admin):
+- `GET /integrations/events` — event catalog
+- `GET|POST /integrations/webhooks`, `PATCH|DELETE /integrations/webhooks/{id}`
+- `POST /integrations/webhooks/{id}/rotate-secret`, `POST /integrations/webhooks/{id}/test`,
+  `GET /integrations/webhooks/{id}/deliveries`
+- `GET|POST /integrations/api-keys`, `DELETE /integrations/api-keys/{id}`
+
+Public API (workspace API key in `X-API-Key` or `Authorization: Bearer`):
+- `GET /v1/me` · `POST /v1/chat` · `GET /v1/knowledge/search`
+- `GET|POST /v1/leads` · `GET /v1/availability` · `GET|POST /v1/bookings`
+- `GET /v1/calls` · `GET /v1/calls/{id}`
+
 ## Conventions
 - Errors: JSON problem shape `{ "error": { "code", "message", "details" } }`.
 - Pagination: `?limit=&cursor=`. Timestamps ISO-8601 UTC. IDs are UUIDs.

@@ -131,6 +131,17 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""  # comma-separated admin emails (platform admins)
     ACCESS_ALLOWLIST: str = ""  # comma-separated emails that skip the voice queue
 
+    # --- Automations (outbound webhooks + public API) ---
+    WEBHOOK_ALLOW_PRIVATE: bool = (
+        False  # allow delivery to private/internal hosts (self-hosted n8n)
+    )
+    WEBHOOK_TIMEOUT_SECONDS: float = 10.0
+    WEBHOOK_MAX_ATTEMPTS: int = 3
+    WEBHOOK_DISABLE_AFTER_FAILURES: int = (
+        25  # auto-disable an endpoint after N consecutive failures
+    )
+    API_RATE_LIMIT_PER_MIN: int = 120  # per-tenant limit for API-key requests
+
     # ----------------------------------------------------------------- helpers
     @property
     def database_url(self) -> str:

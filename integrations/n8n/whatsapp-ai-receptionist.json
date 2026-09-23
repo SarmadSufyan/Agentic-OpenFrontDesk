@@ -1,0 +1,93 @@
+{
+  "name": "OpenFrontDesk: answer WhatsApp messages with your AI receptionist",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "9d2f0c6a-3e3b-4b9a-9c73-2e8b3f9a4c01",
+      "name": "WhatsApp message",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "2b5c1c0a-9e77-4daf-83b4-af1d8e4a6c03"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1a2b3c4-0000-4000-8000-000000000003",
+              "leftValue": "={{ $json.messages?.[0]?.type }}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9d2f0c6a-3e3b-4b9a-9c73-2e8b3f9a4c02",
+      "name": "Is a text message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-OPENFRONTDESK-HOST/v1/chat",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.messages[0].text.body }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9d2f0c6a-3e3b-4b9a-9c73-2e8b3f9a4c03",
+      "name": "Ask OpenFrontDesk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, -20]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp message').item.json.metadata.phone_number_id }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp message').item.json.messages[0].from }}",
+        "textBody": "={{ $json.reply }}",
+        "additionalFields": {}
+      },
+      "id": "9d2f0c6a-3e3b-4b9a-9c73-2e8b3f9a4c04",
+      "name": "Reply on WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [660, -20]
+    }
+  ],
+  "connections": {
+    "WhatsApp message": {
+      "main": [[{ "node": "Is a text message", "type": "main", "index": 0 }]]
+    },
+    "Is a text message": {
+      "main": [[{ "node": "Ask OpenFrontDesk", "type": "main", "index": 0 }], []]
+    },
+    "Ask OpenFrontDesk": {
+      "main": [[{ "node": "Reply on WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

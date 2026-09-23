@@ -1,0 +1,90 @@
+{
+  "name": "OpenFrontDesk: email every call transcript",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "openfrontdesk-calls",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "7c1e9b5f-2d2a-4a8f-8b62-1d7a2e8f3b01",
+      "name": "OpenFrontDesk event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "1a4b0b9f-8d66-4c9f-b2a3-9e0c7d3f5b02"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verifies the X-OFD-Signature header (HMAC-SHA256 over \"<timestamp>.<raw body>\").\n// Paste the signing secret shown when you created the webhook in OpenFrontDesk.\nconst SECRET = 'whsec_REPLACE_ME';\n\nconst crypto = require('crypto');\nconst item = $input.first();\nconst headers = item.json.headers;\nconst raw = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst ts = headers['x-ofd-timestamp'];\nconst expected = 'sha256=' + crypto.createHmac('sha256', SECRET).update(`${ts}.`).update(raw).digest('hex');\nconst received = headers['x-ofd-signature'] || '';\nconst valid = received.length === expected.length &&\n  crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));\nif (!valid) throw new Error('Invalid OpenFrontDesk signature');\nif (Math.abs(Date.now() / 1000 - Number(ts)) > 300) throw new Error('Stale OpenFrontDesk event');\n\nreturn [{ json: JSON.parse(raw.toString('utf8')) }];"
+      },
+      "id": "7c1e9b5f-2d2a-4a8f-8b62-1d7a2e8f3b02",
+      "name": "Verify signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1a2b3c4-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "call.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7c1e9b5f-2d2a-4a8f-8b62-1d7a2e8f3b03",
+      "name": "Is a finished call",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "frontdesk@example.com",
+        "toEmail": "owner@example.com",
+        "subject": "=Call {{ $json.data.outcome || 'completed' }} ({{ $json.data.duration_seconds }}s) {{ $json.data.caller_number || '' }}",
+        "emailFormat": "text",
+        "text": "=A call handled by your AI receptionist just ended.\n\nStarted: {{ $json.data.started_at }}\nDuration: {{ $json.data.duration_seconds }} seconds\nOutcome: {{ $json.data.outcome || '-' }}\nCaller: {{ $json.data.caller_number || 'web caller' }}\n{{ $json.data.summary ? 'Summary: ' + $json.data.summary + '\\n' : '' }}\nTranscript\n----------\n{{ ($json.data.transcript || []).map(t => t.role + ': ' + t.text).join('\\n') }}",
+        "options": {}
+      },
+      "id": "7c1e9b5f-2d2a-4a8f-8b62-1d7a2e8f3b04",
+      "name": "Email the transcript",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [680, -20]
+    }
+  ],
+  "connections": {
+    "OpenFrontDesk event": {
+      "main": [[{ "node": "Verify signature", "type": "main", "index": 0 }]]
+    },
+    "Verify signature": {
+      "main": [[{ "node": "Is a finished call", "type": "main", "index": 0 }]]
+    },
+    "Is a finished call": {
+      "main": [[{ "node": "Email the transcript", "type": "main", "index": 0 }], []]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

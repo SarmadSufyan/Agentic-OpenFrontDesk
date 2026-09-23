@@ -16,8 +16,10 @@ from ofd.api.routers import (
     admin,
     auth,
     health,
+    integrations,
     knowledge,
     livekit,
+    public_api,
     records,
     voice,
     web,
@@ -28,6 +30,7 @@ from ofd.core import metrics
 from ofd.core.config import settings
 from ofd.core.exceptions import OFDError
 from ofd.core.logging import configure_logging, get_logger
+from ofd.services import webhooks as webhooks_svc
 
 logger = get_logger(__name__)
 
@@ -37,6 +40,7 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("startup", app=settings.APP_NAME, env=settings.ENV, version=__version__)
     yield
+    await webhooks_svc.drain(10.0)  # finish in-flight webhook deliveries
     logger.info("shutdown")
 
 
@@ -98,6 +102,8 @@ def create_app() -> FastAPI:
     app.include_router(voice.router)
     app.include_router(admin.router)
     app.include_router(widget.router)
+    app.include_router(integrations.router)
+    app.include_router(public_api.router)
     app.include_router(livekit.router)
     app.include_router(web.router)
     return app

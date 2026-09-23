@@ -59,7 +59,10 @@ _TOOLS = [
                 "properties": {
                     "customer_name": {"type": "string"},
                     "phone": {"type": "string"},
-                    "start_time": {"type": "string", "description": "ISO 8601, e.g. 2026-09-24T14:30:00"},
+                    "start_time": {
+                        "type": "string",
+                        "description": "ISO 8601, e.g. 2026-09-24T14:30:00",
+                    },
                     "service": {"type": "string"},
                 },
                 "required": ["customer_name", "start_time"],
@@ -147,7 +150,9 @@ async def _run_tool(
             slots = await booking_svc.check_availability(
                 db, tenant, service=args.get("service"), slot_minutes=slot
             )
-            return "; ".join(s.start.strftime("%A %b %d %I:%M %p") for s in slots) or "No open slots"
+            return (
+                "; ".join(s.start.strftime("%A %b %d %I:%M %p") for s in slots) or "No open slots"
+            )
         if name == "book_appointment":
             start = datetime.fromisoformat(args["start_time"])
             bk = await booking_svc.book(

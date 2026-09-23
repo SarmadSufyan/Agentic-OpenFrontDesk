@@ -21,6 +21,7 @@ from ofd.core.logging import get_logger
 from ofd.models.booking import Booking
 from ofd.models.enums import BookingStatus
 from ofd.models.tenant import Tenant
+from ofd.services import webhooks
 
 logger = get_logger("ofd.services.booking")
 
@@ -153,7 +154,23 @@ async def book(
     )
     db.add(booking)
     await db.flush()
+    webhooks.emit_on_commit(db, tenant.id, "booking.created", booking_payload(booking))
     return booking
+
+
+def booking_payload(booking: Booking) -> dict:
+    return {
+        "id": str(booking.id),
+        "customer_name": booking.customer_name,
+        "customer_phone": booking.customer_phone,
+        "service": booking.service,
+        "start_at": booking.start_at.isoformat() if booking.start_at else None,
+        "end_at": booking.end_at.isoformat() if booking.end_at else None,
+        "status": booking.status,
+        "notes": booking.notes,
+        "call_id": str(booking.call_id) if booking.call_id else None,
+        "agent_id": str(booking.agent_id) if booking.agent_id else None,
+    }
 
 
 async def cancel(db: AsyncSession, tenant_id: uuid.UUID, booking_id: uuid.UUID) -> Booking:

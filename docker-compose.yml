@@ -3,6 +3,7 @@
 # Full API:       docker compose up -d db redis api
 # With free TTS:  docker compose --profile tts up -d kokoro
 # Agent (P1+):    docker compose --profile agent up -d agent
+# Automations:    docker compose --profile automation up -d n8n
 
 services:
   db:
@@ -69,5 +70,22 @@ services:
       - db
       - redis
 
+  # Optional self-hosted n8n for automations (webhooks in, /v1 API out). UI: http://localhost:5678
+  # OpenFrontDesk reaches it as http://n8n:5678/webhook/... which is a private address, so set
+  # WEBHOOK_ALLOW_PRIVATE=true in .env when you use it. See docs/17-automations.md.
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    profiles: ["automation"]
+    environment:
+      N8N_SECURE_COOKIE: "false"   # local http; remove behind HTTPS
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto   # Code nodes verify webhook signatures with it
+      GENERIC_TIMEZONE: ${N8N_TIMEZONE:-UTC}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8ndata:/home/node/.n8n
+
 volumes:
   pgdata:
+  n8ndata:

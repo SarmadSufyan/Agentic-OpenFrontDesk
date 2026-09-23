@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ofd.models.call import Call, CallEvent
 from ofd.models.enums import CallDirection, CallStatus
+from ofd.services import webhooks
 
 
 async def start_call(
@@ -63,6 +64,23 @@ async def finalize_call(
         call.latency_ms = latency_ms
     call.cost_cents = cost_cents
     await db.flush()
+    webhooks.emit_on_commit(
+        db,
+        call.tenant_id,
+        "call.completed",
+        {
+            "id": str(call.id),
+            "agent_id": str(call.agent_id) if call.agent_id else None,
+            "direction": call.direction,
+            "outcome": call.outcome,
+            "caller_number": call.caller_number,
+            "started_at": call.started_at.isoformat() if call.started_at else None,
+            "ended_at": call.ended_at.isoformat() if call.ended_at else None,
+            "duration_seconds": call.duration_seconds,
+            "summary": call.summary,
+            "transcript": call.transcript or [],
+        },
+    )
 
 
 async def add_event(

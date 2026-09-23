@@ -24,6 +24,7 @@ from ofd.rag.chunk import chunk_text
 from ofd.rag.parse import extract_text
 from ofd.rag.retrieve import RetrievedChunk
 from ofd.rag.retrieve import search as _search
+from ofd.services import webhooks
 
 logger = get_logger("ofd.services.knowledge")
 
@@ -89,6 +90,18 @@ async def run_ingestion(
         doc.status = DocStatus.READY
         await db.flush()
         logger.info("ingested", doc_id=str(doc.id), chunks=len(chunks), chars=len(raw))
+        webhooks.emit_on_commit(
+            db,
+            doc.tenant_id,
+            "knowledge.ready",
+            {
+                "id": str(doc.id),
+                "title": doc.title,
+                "source_type": doc.source_type,
+                "chunk_count": doc.chunk_count,
+                "char_count": doc.char_count,
+            },
+        )
     except Exception as exc:
         doc.status = DocStatus.FAILED
         doc.error = str(exc)[:500]
