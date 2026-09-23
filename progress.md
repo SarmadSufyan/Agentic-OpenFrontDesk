@@ -3,7 +3,7 @@
 > Single source of truth for build progress. Updated at the end of every work session.
 > Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ blocked/parked
 
-**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) + M3 (automations) + M4 (custom solutions) ✅ done → M5 (Next.js frontend) next
+**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) + M3 (automations) + M4 (custom solutions) + M5 (Next.js frontend) ✅ done → M6 (deploy + launch) next
 **Last updated:** 2026-09-23
 **Note:** Live voice call verified working end-to-end (Groq `openai/gpt-oss-20b`, Kokoro TTS, turn-detector baked in). Phases 0–4 built; pushed to GitHub (CI green). Now building the SaaS product layer.
 
@@ -136,7 +136,15 @@ chat widget first then automations.
       docs/18-contact-and-personalization.md. Verified: 69 tests; HTTP e2e against a test instance with
       Mailpit (6 correctly addressed emails, spam got none, 429 on the 6th submit, admin filters,
       scheduling email, 403 for non-admins); form and Admin tab driven in the browser.
-- [ ] **M5 — Modern frontend (Next.js + shadcn/ui):** landing, auth, onboarding, dashboard, test console.
+- [x] **M5 — Modern frontend (Next.js + shadcn/ui):** `apps/web` (Next.js 16, React 19, Tailwind 4,
+      shadcn/ui on Base UI, SWR, livekit-client). Landing with an animated live-call hero, sign-up and
+      sign-in, a five-step onboarding (step in the URL), and a dashboard: overview with a server-backed
+      setup checklist, knowledge (text, URL, file, live status, retrieval preview), test console (chat +
+      queue-aware voice with transcripts), deploy (widget snippet, brand color, live preview),
+      calls/leads/bookings, integrations, settings (hours editor, voice, tone, services), admin.
+      Light and dark themes; CI builds and lints it. docs/19-frontend.md. Backend fixes found while
+      building it: per-agent voice, settings merge, date-aware chat, time zones west of UTC, closed
+      days, stuck indexing (model baked, Xet disabled, timeout, restart recovery), tzdata.
 - [ ] **M6 — Deploy + launch:** Vercel (frontend) + VPS (backend) + docs + live demo.
 
 ## Phase 5 — Launch ⬜
@@ -297,3 +305,30 @@ OTel/Langfuse, and telephony go-live (Telnyx/Twilio account + number).
   remove all work; no console errors; no horizontal overflow at 375px. Test rows, containers and
   rate-limit keys cleaned up afterwards.
 - Note: `init_db` re-run to create `contact_request`.
+
+### 2026-09-23 (SaaS M5 — web frontend)
+- Built `apps/web` with create-next-app (Next.js 16.3) and shadcn/ui (`base-nova` style, Base UI
+  primitives). Checked the bundled Next 16 docs first (Suspense around `useSearchParams`, SWR for client
+  data). Audited the new `cn` utility package before keeping it (published by shadcn, no install scripts,
+  zero audit findings).
+- Design: warm paper and ink, evergreen primary, a vermilion signal for live moments; Instrument Serif,
+  Hanken Grotesk, JetBrains Mono; an animated live-call hero that shows the product working.
+- Data layer: typed client with one deduplicated token refresh on 401; auth via `useSyncExternalStore`
+  plus SWR; cache cleared on sign-out; distinct offline state.
+- React Compiler lint rules caught real issues (a ref returned from the voice hook, a self-referencing
+  poll, `Date.now()` during render), all fixed. Also fixed: nested forms in onboarding, ISO-string date
+  comparisons, "1 passages", clipped time inputs, a 16 px mobile overflow in the feature grid.
+- Backend fixes found by exercising the UI end to end (details in docs/19-frontend.md): per-agent voice,
+  settings merge, chat prompt with date, calendar, hours, services and tone plus date-aware
+  availability; bare dates no longer shift a day west of UTC; closed days no longer return the next
+  day's slots; embedding model baked into images with Xet disabled (downloads had hung at 0 bytes);
+  ingestion timeout and startup recovery for orphaned documents; `tzdata` dependency. 6 new tests (75).
+- **Verified:** sign-up and all onboarding steps in the browser against the live API; grounded chat
+  answer with source; deploy color, snippet and live widget preview; settings saved with earlier keys
+  preserved; headless Chrome screenshots of every route in both themes at 1440 and 390 px with no page
+  errors and no overflow; `npm run lint`, type-check and production build clean.
+- **Incident:** the C: drive filled up (0 GB free) during image rebuilds. Docker's disk image lives on
+  C:, so the engine crashed, left unremovable socket files (recovered by moving the `run` and
+  `docker-secrets-engine` folders aside), and later returned I/O errors and corrupted the agent image.
+  Pending until space is freed on C:: rebuild the agent image, then a real voice call from the new
+  console and a visual pass of the admin page.

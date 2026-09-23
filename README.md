@@ -47,6 +47,9 @@ month on infrastructure you already own, and upgrade to premium providers per cl
   helpdesk, integrations), with an instant prefilled booking link, email and Slack notifications, and an
   admin inbox to track each request to a call. See
   [docs/18-contact-and-personalization.md](docs/18-contact-and-personalization.md).
+- **A real product UI.** A Next.js app with sign-up, a five-step onboarding, a dashboard, and a test
+  console where you can chat with or call your receptionist before going live. See
+  [docs/19-frontend.md](docs/19-frontend.md).
 - **Free to demo.** Testing uses the browser microphone over LiveKit's free tier; a real phone number is
   only added at go-live.
 
@@ -68,6 +71,14 @@ Then open:
 - `http://localhost:8000/test` - talk to the agent in the browser (needs LiveKit and Groq keys)
 - `http://localhost:8000/widget-demo` - the embeddable chat widget
 - `http://localhost:8000/contact` - the custom-solutions request form
+
+Then start the web app (Node 20 or newer):
+
+```bash
+cd apps/web
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000
+npm install && npm run dev   # http://localhost:3000, sign up and follow the onboarding
+```
 
 If port 8000 is already in use, set `API_HOST_PORT=8080` in `.env`. On Windows without `make`, run
 `scripts/demo.ps1` (or the commands in the `Makefile` demo target).
@@ -95,6 +106,7 @@ receptionist costs 15 to 25 dollars an hour.
 ## Project layout
 
 ```
+apps/web/      Next.js frontend: marketing site, onboarding, dashboard, test console
 src/ofd/       api, agent (voice worker), rag, services, providers, models
 eval/          scenario suite, scorers, and the text-mode runner (the eval harness)
 docs/          one file per aspect (architecture, RAG, costing, security, and so on)
