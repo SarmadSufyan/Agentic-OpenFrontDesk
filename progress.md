@@ -3,7 +3,7 @@
 > Single source of truth for build progress. Updated at the end of every work session.
 > Legend: ✅ done · 🚧 in progress · ⬜ not started · ⏸️ blocked/parked
 
-**Current phase:** SaaS build — M1 (access engine) ✅ done → M2 (embeddable chat widget) next
+**Current phase:** SaaS build — M1 (access engine) + M2 (chat widget) ✅ done → M3 (automations) next
 **Last updated:** 2026-09-23
 **Note:** Live voice call verified working end-to-end (Groq `openai/gpt-oss-20b`, Kokoro TTS, turn-detector baked in). Phases 0–4 built; pushed to GitHub (CI green). Now building the SaaS product layer.
 
@@ -114,7 +114,10 @@ chat widget first then automations.
       (mints the LiveKit token only when a slot is granted), `/admin/*` (allowlist + live sessions,
       gated by `ADMIN_EMAILS`). Verified: cap=3 grants 3 + queues the 4th, release promotes FIFO,
       allowlist bypasses a full cap; endpoints + admin auth confirmed.
-- [ ] **M2 — Embeddable chat widget:** public text-chat endpoint + `widget.js` + leads/bookings from chat.
+- [x] **M2 — Embeddable chat widget:** grounded text-chat brain (`services/chat.py`, OpenAI-compatible
+      LLM via httpx + the same tools), public per-tenant endpoints (`/widget.js`, `/widget/{slug}/config`,
+      `/widget/{slug}/chat`), a `/widget-demo` page, open CORS, rate-limited. Verified: grounded $250
+      answer with sources; refuses to invent; leads/bookings flow to the dashboard.
 - [ ] **M3 — Automations:** outbound webhooks + API keys + n8n template.
 - [ ] **M4 — Contact/personalization:** contact form + scheduling link + admin inbox.
 - [ ] **M5 — Modern frontend (Next.js + shadcn/ui):** landing, auth, onboarding, dashboard, test console.

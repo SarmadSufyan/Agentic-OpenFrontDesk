@@ -21,6 +21,7 @@ from ofd.api.routers import (
     records,
     voice,
     web,
+    widget,
     workspace,
 )
 from ofd.core import metrics
@@ -48,10 +49,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Open CORS: the embeddable widget runs on arbitrary third-party sites, and the app authenticates
+    # with bearer tokens (not cookies), so credentials can stay off.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
+        allow_origins=["*"],
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -94,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(knowledge.router)
     app.include_router(voice.router)
     app.include_router(admin.router)
+    app.include_router(widget.router)
     app.include_router(livekit.router)
     app.include_router(web.router)
     return app
