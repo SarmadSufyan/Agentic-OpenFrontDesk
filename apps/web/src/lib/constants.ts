@@ -2,6 +2,14 @@ import type { Day } from "./types";
 
 export const GITHUB_URL = "https://github.com/SarmadSufyan/Agentic-OpenFrontDesk";
 
+export const BUDGET_LABELS: Record<string, string> = {
+  under_1k: "Under $1,000",
+  "1k_5k": "$1,000 to $5,000",
+  "5k_20k": "$5,000 to $20,000",
+  "20k_plus": "Over $20,000",
+  not_sure: "Not sure yet",
+};
+
 export const DAYS: { key: Day; label: string }[] = [
   { key: "mon", label: "Monday" },
   { key: "tue", label: "Tuesday" },

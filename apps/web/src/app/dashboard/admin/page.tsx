@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { BUDGET_LABELS } from "@/lib/constants";
 import { ago, when } from "@/lib/format";
 import type {
   AllowlistEntry,
@@ -178,7 +179,7 @@ function RequestDetail({
               ["Phone", r.phone],
               ["Website", r.website],
               ["Team size", r.team_size],
-              ["Budget", r.budget?.replace("_", " ")],
+              ["Budget", r.budget ? (BUDGET_LABELS[r.budget] ?? r.budget) : null],
               ["Needs", r.needs.map(label).join(", ")],
               ["Handled by", r.handled_by],
               ["Last contacted", r.last_contacted_at ? when(r.last_contacted_at) : null],

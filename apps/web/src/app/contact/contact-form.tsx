@@ -12,16 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { BUDGET_LABELS } from "@/lib/constants";
 import type { ContactAccepted, ContactOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const BUDGET_LABEL: Record<string, string> = {
-  under_1k: "Under $1,000",
-  "1k_5k": "$1,000 to $5,000",
-  "5k_20k": "$5,000 to $20,000",
-  "20k_plus": "Over $20,000",
-  not_sure: "Not sure yet",
-};
 
 export function ContactForm() {
   const { data: options } = useSWR<ContactOptions>("/contact/options");
@@ -151,7 +144,7 @@ export function ContactForm() {
           <option value="">Select</option>
           {options?.budgets.map((b) => (
             <option key={b} value={b}>
-              {BUDGET_LABEL[b] ?? b}
+              {BUDGET_LABELS[b] ?? b}
             </option>
           ))}
         </NativeSelect>
