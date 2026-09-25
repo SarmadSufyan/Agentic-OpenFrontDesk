@@ -1,4 +1,5 @@
 {
+  "id": "OfdCallSummaryEm",
   "name": "OpenFrontDesk: email every call transcript",
   "nodes": [
     {
@@ -14,7 +15,10 @@
       "name": "OpenFrontDesk event",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "1a4b0b9f-8d66-4c9f-b2a3-9e0c7d3f5b02"
     },
     {
@@ -25,7 +29,10 @@
       "name": "Verify signature",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -54,7 +61,10 @@
       "name": "Is a finished call",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [440, 0]
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -69,18 +79,46 @@
       "name": "Email the transcript",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [680, -20]
+      "position": [
+        680,
+        -20
+      ]
     }
   ],
   "connections": {
     "OpenFrontDesk event": {
-      "main": [[{ "node": "Verify signature", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Verify signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Verify signature": {
-      "main": [[{ "node": "Is a finished call", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Is a finished call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Is a finished call": {
-      "main": [[{ "node": "Email the transcript", "type": "main", "index": 0 }], []]
+      "main": [
+        [
+          {
+            "node": "Email the transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
     }
   },
   "settings": {

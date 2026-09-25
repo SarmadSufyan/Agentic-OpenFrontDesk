@@ -332,3 +332,16 @@ OTel/Langfuse, and telephony go-live (Telnyx/Twilio account + number).
   `docker-secrets-engine` folders aside), and later returned I/O errors and corrupted the agent image.
   Pending until space is freed on C:: rebuild the agent image, then a real voice call from the new
   console and a visual pass of the admin page.
+
+### 2026-09-26 (docs and automation setup)
+- Added `docs/20-user-guide.md`: the product from a signed-in business owner's point of view (onboarding,
+  every dashboard page, integrations, settings, fair-use limits, troubleshooting). Facts checked against the
+  code: owner/admin gates on Integrations and Settings, 15 MB uploads, 60 chat messages and 120 API requests
+  per minute per workspace, 3 shared voice lines.
+- n8n templates now carry fixed workflow ids, so they import with the n8n CLI as well as the GUI (the CLI
+  rejected them without an id). Local n8n started with all three templates pre-imported.
+- Repository hygiene: commit messages no longer carry AI co-author trailers (history rewritten and
+  force-pushed with code, authors and dates verified identical); Next.js `agentRules: false` stops the dev
+  server from writing AGENTS.md and CLAUDE.md.
+- Local dev: the API host port moved from 8080 to 8081 because a Windows service (MTAgentService) now holds
+  8080; `apps/web/.env.local` points at 8081.

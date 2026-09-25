@@ -117,7 +117,8 @@ progress.md    living build log
 ```
 
 Start with [docs/00-overview.md](docs/00-overview.md) and
-[docs/02-architecture.md](docs/02-architecture.md).
+[docs/02-architecture.md](docs/02-architecture.md). To learn the product from a business owner's point of
+view, read the [user guide](docs/20-user-guide.md).
 
 ## Roadmap
 

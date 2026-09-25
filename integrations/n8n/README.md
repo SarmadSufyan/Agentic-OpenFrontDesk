@@ -1,7 +1,20 @@
 # n8n templates for OpenFrontDesk
 
 Three ready-to-import workflows. In n8n: **Workflows, Import from File**, then follow the steps for the
-template. The event format, signature scheme and `/v1` API are documented in
+template. With the bundled container you can also import all three from the command line; they appear in
+the workflow list, unpublished, until you connect your accounts:
+
+```bash
+for f in lead-to-sheets-and-slack call-summary-email whatsapp-ai-receptionist; do
+  docker compose --profile automation cp "integrations/n8n/$f.json" "n8n:/tmp/$f.json"
+  docker compose --profile automation exec n8n n8n import:workflow --input=/tmp/$f.json
+done
+```
+
+Each template has a fixed workflow `id`, so importing it again updates it instead of creating a copy.
+On Windows Git Bash, run `export MSYS_NO_PATHCONV=1` first so `/tmp/...` paths are passed unchanged.
+
+The event format, signature scheme and `/v1` API are documented in
 [docs/17-automations.md](../../docs/17-automations.md).
 
 ## Prerequisites

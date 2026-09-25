@@ -1,15 +1,21 @@
 {
+  "id": "OfdWhatsAppAgent",
   "name": "OpenFrontDesk: answer WhatsApp messages with your AI receptionist",
   "nodes": [
     {
       "parameters": {
-        "updates": ["messages"]
+        "updates": [
+          "messages"
+        ]
       },
       "id": "9d2f0c6a-3e3b-4b9a-9c73-2e8b3f9a4c01",
       "name": "WhatsApp message",
       "type": "n8n-nodes-base.whatsAppTrigger",
       "typeVersion": 1,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "2b5c1c0a-9e77-4daf-83b4-af1d8e4a6c03"
     },
     {
@@ -39,7 +45,10 @@
       "name": "Is a text message",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -58,7 +67,10 @@
       "name": "Ask OpenFrontDesk",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, -20]
+      "position": [
+        440,
+        -20
+      ]
     },
     {
       "parameters": {
@@ -72,18 +84,46 @@
       "name": "Reply on WhatsApp",
       "type": "n8n-nodes-base.whatsApp",
       "typeVersion": 1,
-      "position": [660, -20]
+      "position": [
+        660,
+        -20
+      ]
     }
   ],
   "connections": {
     "WhatsApp message": {
-      "main": [[{ "node": "Is a text message", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Is a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Is a text message": {
-      "main": [[{ "node": "Ask OpenFrontDesk", "type": "main", "index": 0 }], []]
+      "main": [
+        [
+          {
+            "node": "Ask OpenFrontDesk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
     },
     "Ask OpenFrontDesk": {
-      "main": [[{ "node": "Reply on WhatsApp", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
