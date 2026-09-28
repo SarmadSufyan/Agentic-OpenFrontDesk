@@ -49,7 +49,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-2xl border bg-card p-5 sm:p-6", className)}>
+    <section className={cn("min-w-0 rounded-2xl border bg-card p-5 sm:p-6", className)}>
       {(title || actions) && (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>

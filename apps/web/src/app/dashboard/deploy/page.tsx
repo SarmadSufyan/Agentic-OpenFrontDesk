@@ -145,12 +145,17 @@ export default function DeployPage() {
           <Channel
             icon={MessageCircleIcon}
             title="WhatsApp"
-            status="Template ready"
-            body="Answer WhatsApp messages with the same receptionist using the ready-made n8n workflow, or let us set it up for you."
+            status="Available"
+            body="Answer WhatsApp messages with the same receptionist through a self-hosted WA-AKG gateway, or let us set it up for you."
             action={
-              <Link href="/contact?need=whatsapp" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-                Get it set up
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/dashboard/whatsapp" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                  Set up WhatsApp
+                </Link>
+                <Link href="/contact?need=whatsapp" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+                  Get it set up for me
+                </Link>
+              </div>
             }
           />
           <Channel

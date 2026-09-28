@@ -7,6 +7,7 @@ from ofd.models.audit import AuditLog
 from ofd.models.automation import ApiKey, WebhookDelivery, WebhookEndpoint
 from ofd.models.booking import Booking
 from ofd.models.call import Call, CallEvent
+from ofd.models.channel import ChannelMessage, WhatsAppConnection
 from ofd.models.contact import ContactRequest
 from ofd.models.integration import Integration
 from ofd.models.knowledge import DocChunk, KnowledgeDoc
@@ -28,6 +29,8 @@ __all__ = [
     "WebhookDelivery",
     "ApiKey",
     "ContactRequest",
+    "WhatsAppConnection",
+    "ChannelMessage",
     "KnowledgeDoc",
     "DocChunk",
     "Call",

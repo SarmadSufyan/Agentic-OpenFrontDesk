@@ -230,9 +230,15 @@ async def chat(
     agent: Agent | None,
     message: str,
     history: list[dict] | None = None,
+    context: str | None = None,
 ) -> dict:
-    """Run one grounded chat turn. Returns {reply, sources}."""
-    messages: list[dict] = [{"role": "system", "content": _system_prompt(tenant, agent)}]
+    """Run one grounded chat turn. Returns {reply, sources}.
+
+    `context` adds channel facts to the system prompt (for example the customer's WhatsApp number, so
+    bookings and messages can use it without asking).
+    """
+    system = _system_prompt(tenant, agent) + (f"\n{context}" if context else "")
+    messages: list[dict] = [{"role": "system", "content": system}]
     for h in (history or [])[-MAX_HISTORY:]:
         role, content = h.get("role"), h.get("content")
         if role in ("user", "assistant") and content:

@@ -26,6 +26,7 @@ dependencies = [
     "bcrypt>=4.1",
     "tzdata>=2024.1",  # IANA time zones for zoneinfo on Windows (Linux ships them)
     "pyjwt>=2.8",
+    "cryptography>=42",  # encrypts stored third-party credentials (e.g. a WhatsApp gateway key)
     "python-dotenv>=1.0",
     "livekit-api>=0.8",
 ]

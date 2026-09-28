@@ -140,8 +140,18 @@ class Settings(BaseSettings):
     WEBHOOK_DISABLE_AFTER_FAILURES: int = 25  # auto-disable after N consecutive failures
     API_RATE_LIMIT_PER_MIN: int = 120  # per-tenant limit for API-key requests
 
+    # --- Public addresses ---
+    PUBLIC_BASE_URL: str = "http://localhost:8000"  # the API as the internet sees it
+    WEB_APP_URL: str = "http://localhost:3000"  # the dashboard, for links in alert emails
+    # Where gateways (e.g. WA-AKG) send inbound messages; defaults to PUBLIC_BASE_URL. Set it when the
+    # gateway reaches the API by another address (e.g. http://host.docker.internal:8081 locally).
+    INBOUND_BASE_URL: str = ""
+
+    # --- WhatsApp channel (self-hosted gateway) ---
+    WHATSAPP_MAX_PER_SENDER_PER_10MIN: int = 20  # replies per customer number, to cap LLM spend
+    WHATSAPP_HISTORY_TURNS: int = 10  # conversation turns remembered per customer (24 h)
+
     # --- Contact / custom solutions ---
-    PUBLIC_BASE_URL: str = "http://localhost:8000"  # used for links in emails
     SCHEDULING_URL: str = ""  # Cal.com / Calendly link offered after a contact request
     CONTACT_NOTIFY_EMAILS: str = ""  # who is emailed about new requests (defaults to ADMIN_EMAILS)
     CONTACT_WEBHOOK_URL: str = ""  # optional Slack / n8n / Zapier hook for new requests
@@ -179,6 +189,10 @@ class Settings(BaseSettings):
     @property
     def access_allowlist(self) -> set[str]:
         return {e.strip().lower() for e in self.ACCESS_ALLOWLIST.split(",") if e.strip()}
+
+    @property
+    def inbound_base_url(self) -> str:
+        return (self.INBOUND_BASE_URL or self.PUBLIC_BASE_URL).rstrip("/")
 
     @property
     def contact_notify_emails(self) -> list[str]:

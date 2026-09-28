@@ -126,3 +126,40 @@ class ApiBookingIn(BaseModel):
 class SlotOut(BaseModel):
     start: datetime
     end: datetime
+
+
+# --------------------------------------------------------------------------- email alerts
+class AlertEvent(BaseModel):
+    type: str
+    label: str
+
+
+class AlertSettings(BaseModel):
+    emails: list[str] = Field(default_factory=list, max_length=20)
+    events: list[str] = Field(default_factory=list)
+
+
+class AlertSettingsOut(AlertSettings):
+    email_available: bool  # the server can send email (SMTP configured)
+    catalog: list[AlertEvent]
+
+
+# --------------------------------------------------------------------------- n8n connect
+class N8nTemplateOut(BaseModel):
+    key: str
+    name: str
+    description: str
+    events: list[str]
+    needs: list[str]
+
+
+class N8nConnectIn(BaseModel):
+    template: str
+    n8n_url: str = Field(..., max_length=500)
+
+
+class N8nConnectOut(BaseModel):
+    webhook: WebhookWithSecret
+    webhook_url: str
+    filename: str
+    workflow: dict

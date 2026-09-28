@@ -39,10 +39,13 @@ month on infrastructure you already own, and upgrade to premium providers per cl
   takes a message instead of guessing.
 - **Operations built in.** JWT auth, per-tenant rate limiting, PII-redacted logs, a metrics endpoint, and
   an audit log.
-- **Automations.** Signed, retried webhooks (lead, booking, call, knowledge events) and a key-authenticated
-  REST API, with ready-to-import n8n workflows: leads to Google Sheets and Slack, call transcripts by
-  email, and the same trained agent answering on WhatsApp. Works with Zapier and Make too.
+- **Automations.** Built-in email alerts, signed and retried webhooks (lead, booking, call, knowledge
+  events), a key-authenticated REST API, and a guided "Connect n8n" that downloads ready-made workflows
+  with the secret already filled in. Works with Zapier and Make too.
   See [docs/17-automations.md](docs/17-automations.md).
+- **WhatsApp.** The same receptionist answers WhatsApp through a self-hosted WA-AKG gateway, with
+  per-customer memory, signed inbound events and a conversation log.
+  See [docs/21-whatsapp.md](docs/21-whatsapp.md).
 - **Custom solutions pipeline.** A contact form for companies that want a tailored setup (WhatsApp, HR
   helpdesk, integrations), with an instant prefilled booking link, email and Slack notifications, and an
   admin inbox to track each request to a call. See

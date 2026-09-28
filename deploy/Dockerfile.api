@@ -27,6 +27,7 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-smal
 COPY src ./src
 COPY migrations ./migrations
 COPY scripts ./scripts
+COPY integrations ./integrations
 COPY alembic.ini ./
 
 EXPOSE 8000

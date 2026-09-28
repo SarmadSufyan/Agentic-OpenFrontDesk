@@ -160,6 +160,40 @@ curl https://YOUR-HOST/v1/chat \
 Errors use the standard shape `{"error": {"code", "message", "details"}}`: 401 for a missing, unknown,
 or revoked key, 429 when the workspace limit is hit.
 
+## Email alerts (no automation tool needed)
+
+For owners who just want to know when something happens: **Integrations, Email alerts**. Choose up to five
+recipients and any of: new leads and messages, new bookings, call summaries with the transcript. Alerts use
+the same committed-event pipeline as webhooks, so they never fire for data that was rolled back, and dates
+are shown in the workspace's time zone. They need the server's SMTP settings (`SMTP_HOST` and friends); the
+page says so if email is not configured. Settings are stored in the workspace's `settings.notifications`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` / `PUT` | `/integrations/alerts` | Read or save `{emails, events}` (owner/admin) |
+| `POST` | `/integrations/alerts/test` | Send a test email to the saved recipients |
+
+## Connect n8n (guided)
+
+**Integrations, Connect n8n** removes the fiddly part of the templates:
+
+1. Pick a template (new leads to Google Sheets and Slack, or email every call transcript) and enter your
+   n8n address.
+2. OpenFrontDesk creates the webhook (with a unique path such as `/webhook/ofd-leads-3fa2c1d9` and the right
+   events) and downloads the workflow file with that webhook's **secret and path already filled in**.
+3. In n8n: **Workflows, Import from File**, connect your own accounts in the nodes that need them, then
+   **Publish**. Press **Test** on the webhook in OpenFrontDesk to check.
+
+n8n will not run a workflow at all while any node is missing required settings (for example the Google
+Sheet has not been chosen yet), so connect every account before testing.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/integrations/n8n/templates` | Available templates |
+| `POST` | `/integrations/n8n/connect` | `{template, n8n_url}`: creates the webhook, returns the personalised workflow once |
+
+The secret is returned only in that response, like every webhook secret.
+
 ## n8n
 
 Templates (import with **Workflows, Import from File**):
@@ -187,7 +221,9 @@ set `WEBHOOK_ALLOW_PRIVATE=true` for that setup.
 
 Verified against n8n 2.40: a correctly signed delivery passes the Code node (including non-ASCII
 payloads), a wrong secret and a replayed timestamp are rejected, and a real delivery from the API
-container to the n8n container succeeds end to end.
+container to the n8n container succeeds end to end. A workflow downloaded through **Connect n8n** was
+imported and published unchanged: a test event passed the signature check and stopped at the event filter,
+and a real lead passed the check and reached the Sheets and Slack steps.
 
 ## Zapier and Make
 
@@ -216,4 +252,6 @@ container to the n8n container succeeds end to end.
 | Event emission | `services/leads.py`, `booking.py`, `calls.py`, `knowledge.py` |
 | Management API / public API | `api/routers/integrations.py`, `api/routers/public_api.py` |
 | API-key auth + rate limit | `api/deps.py` (`get_api_context`) |
-| Tests | `tests/test_automations.py` |
+| Email alerts | `src/ofd/services/notifications.py` |
+| Personalised n8n templates | `src/ofd/services/n8n_templates.py` |
+| Tests | `tests/test_automations.py`, `tests/test_channels_and_alerts.py` |

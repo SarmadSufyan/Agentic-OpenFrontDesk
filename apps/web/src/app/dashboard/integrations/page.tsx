@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
+import { ConnectN8n } from "@/components/integrations/connect-n8n";
+import { EmailAlerts } from "@/components/integrations/email-alerts";
 import { CodeBlock, EmptyState, ErrorNote, Field, PageHeader, Panel, StatusPill } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,12 +30,14 @@ export default function IntegrationsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Integrations"
-        description="Connect your receptionist to n8n, Zapier, Make or your own code. Webhooks push events the moment they happen; API keys let your workflows act back."
+        description="Get alerts by email, or connect your receptionist to n8n, Zapier, Make or your own code. Webhooks push events the moment they happen; API keys let your workflows act back."
       />
       {!canManage ? (
         <p className="text-sm text-muted-foreground">Only workspace owners and admins can manage integrations.</p>
       ) : (
         <div className="grid gap-6">
+          <EmailAlerts />
+          <ConnectN8n />
           <Webhooks onSecret={setSecret} />
           <ApiKeys onSecret={setSecret} />
           <Panel title="Quick start" description="Ask your receptionist a question from any tool that can make an HTTP request.">

@@ -15,6 +15,7 @@ from ofd import __version__
 from ofd.api.routers import (
     admin,
     auth,
+    channels,
     contact,
     health,
     integrations,
@@ -113,6 +114,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(public_api.router)
     app.include_router(contact.router)
+    app.include_router(channels.router)
     app.include_router(livekit.router)
     app.include_router(web.router)
     return app

@@ -303,14 +303,21 @@ async def _deliver_event(tenant_id: uuid.UUID, event: str, data: dict) -> None:
 
 
 def emit(tenant_id: uuid.UUID, event: str, data: dict) -> None:
-    """Schedule delivery of `event` to the tenant's subscribed endpoints without waiting."""
+    """Fan a committed event out, without waiting: to the tenant's webhooks and to its built-in
+    email alerts."""
+    from ofd.services import notifications  # local import: notifications is optional to this module
+
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         return
-    task = loop.create_task(_deliver_event(tenant_id, event, data))
-    _TASKS.add(task)
-    task.add_done_callback(_TASKS.discard)
+    for job in (
+        _deliver_event(tenant_id, event, data),
+        notifications.notify(tenant_id, event, data),
+    ):
+        task = loop.create_task(job)
+        _TASKS.add(task)
+        task.add_done_callback(_TASKS.discard)
 
 
 def emit_on_commit(db: AsyncSession, tenant_id: uuid.UUID, event: str, data: dict) -> None:

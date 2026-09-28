@@ -17,6 +17,13 @@ On Windows Git Bash, run `export MSYS_NO_PATHCONV=1` first so `/tmp/...` paths a
 The event format, signature scheme and `/v1` API are documented in
 [docs/17-automations.md](../../docs/17-automations.md).
 
+## Easiest: Connect n8n in the dashboard
+
+For the first two templates, the dashboard does the setup for you: **Integrations, Connect n8n**. Pick a
+template and enter your n8n address; OpenFrontDesk creates the webhook and downloads the workflow with the
+secret and webhook path already filled in. Import it, connect your accounts, publish. The manual steps
+below are for the WhatsApp template, custom setups, or if you prefer doing it by hand.
+
 ## Prerequisites
 
 - n8n 1.x or 2.x (verified on 2.40). The bundled container: `docker compose --profile automation up -d n8n`.

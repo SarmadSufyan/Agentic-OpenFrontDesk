@@ -8,6 +8,7 @@ import {
   InboxIcon,
   LayoutGridIcon,
   LogOutIcon,
+  MessageCircleIcon,
   MessageCircleQuestionIcon,
   PhoneCallIcon,
   RocketIcon,
@@ -40,6 +41,7 @@ const GROUPS: { label?: string; items: Item[]; admin?: boolean }[] = [
       { href: "/dashboard/knowledge", label: "Knowledge", icon: BookOpenIcon },
       { href: "/dashboard/test", label: "Test", icon: FlaskConicalIcon },
       { href: "/dashboard/deploy", label: "Deploy", icon: RocketIcon },
+      { href: "/dashboard/whatsapp", label: "WhatsApp", icon: MessageCircleIcon },
     ],
   },
   {

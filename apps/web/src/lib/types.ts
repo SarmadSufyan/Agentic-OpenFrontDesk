@@ -238,3 +238,48 @@ export interface AllowlistEntry {
   note: string | null;
   created_at: string;
 }
+
+export interface AlertSettings {
+  emails: string[];
+  events: string[];
+  email_available: boolean;
+  catalog: { type: string; label: string }[];
+}
+
+export interface N8nTemplate {
+  key: string;
+  name: string;
+  description: string;
+  events: string[];
+  needs: string[];
+}
+
+export interface N8nConnectResult {
+  webhook: Webhook;
+  webhook_url: string;
+  filename: string;
+  workflow: Record<string, unknown>;
+}
+
+export interface WhatsAppStatus {
+  connected: boolean;
+  provider: string | null;
+  base_url: string | null;
+  session_id: string | null;
+  api_key_hint: string | null;
+  phone: string | null;
+  inbound_url: string | null;
+  session_status: string | null;
+  session_error: string | null;
+  last_inbound_at: string | null;
+  last_error: string | null;
+}
+
+export interface ChannelMessage {
+  id: string;
+  contact: string;
+  contact_name: string | null;
+  direction: "in" | "out";
+  text: string;
+  created_at: string;
+}

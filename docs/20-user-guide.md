@@ -13,7 +13,7 @@ you are signed in, in the order most people do it.
 5. [Test: talk to it like a customer](#5-test-talk-to-it-like-a-customer)
 6. [Deploy: put it where your customers are](#6-deploy-put-it-where-your-customers-are)
 7. [Activity: calls, leads and bookings](#7-activity-calls-leads-and-bookings)
-8. [Integrations: connect your other tools](#8-integrations-connect-your-other-tools)
+8. [Integrations: alerts and your other tools](#8-integrations-alerts-and-your-other-tools)
 9. [Settings: your business and your receptionist](#9-settings-your-business-and-your-receptionist)
 10. [Custom solutions](#10-custom-solutions)
 11. [Admin (platform operators only)](#11-admin-platform-operators-only)
@@ -158,9 +158,23 @@ browser from the Test page.
 
 ### WhatsApp
 
-A ready-made workflow answers WhatsApp messages with the same receptionist. It needs a WhatsApp Business
-account from Meta. You can set it up yourself (see Integrations) or request it through **Get it set up**,
-which opens the custom-solutions form.
+Open **WhatsApp** in the sidebar to let the same receptionist answer WhatsApp messages. It connects through
+WA-AKG, a free, self-hosted WhatsApp gateway you run yourself:
+
+1. Run WA-AKG, create a session, scan its QR code with the WhatsApp number you want to use (under
+   **Linked devices** on the phone), and create an API key in WA-AKG.
+2. On the WhatsApp page, enter the gateway address, the session ID and the API key, and click
+   **Connect WhatsApp**.
+3. Click **Test connection**. Then send a message to the number from another phone.
+
+The page then shows the number with a **Live** badge and your conversations, grouped by customer. The
+receptionist remembers each customer's conversation for a day, answers text and captions, asks the
+customer to type when they send a voice note, and ignores group chats.
+
+This gateway is unofficial: WhatsApp can restrict numbers that send automated messages, so use a
+dedicated number rather than your personal one. For higher volumes, or to have it set up for you, use
+**Get it set up for me**, which opens the custom-solutions form. The full setup guide is in
+`docs/21-whatsapp.md`.
 
 ## 7. Activity: calls, leads and bookings
 
@@ -171,9 +185,27 @@ which opens the custom-solutions form.
 - **Bookings**: split into **Upcoming** and **Past**, with the customer, service and phone number. All
   bookings respect your opening hours and appointment length.
 
-## 8. Integrations: connect your other tools
+## 8. Integrations: alerts and your other tools
 
 Only workspace owners and admins can manage integrations.
+
+### Email alerts: the simplest option
+
+Under **Email alerts**, enter up to five addresses and tick what you want to hear about: new leads and
+messages, new bookings, and call summaries with the transcript. Click **Save alerts**, then **Send a test
+email**. Each alert is a short, readable email with the details and a link to the right dashboard page. If
+the page says email sending is not set up, the operator of your installation has to configure it first.
+
+### Connect n8n: ready-made workflows
+
+1. Under **Connect n8n**, pick a workflow (new leads to Google Sheets and Slack, or email every call
+   transcript) and enter the address you open n8n at.
+2. Click **Create webhook and download workflow**. A file downloads with everything already filled in.
+3. In n8n: **Workflows, Import from File**, choose the file, connect your own Google, Slack or email account
+   in the nodes that ask for it, and click **Publish**.
+4. Back in OpenFrontDesk, press **Test** on the new webhook.
+
+n8n does not run a workflow until every node is set up, so connect all accounts before testing.
 
 ### Webhooks: send events to your tools
 
@@ -288,5 +320,8 @@ Self-hosted installations can change all of these in their configuration.
 | "You are number N in line" | All voice lines are busy. Keep the page open; the call starts automatically |
 | The chat bubble does not appear on my website | Check the snippet is on the page and before `</body>`, then clear your site's cache. Use **Preview on this page** to confirm the widget itself works |
 | A webhook shows failures in its Log | Check the address is reachable from the internet and the secret in your tool is current. Click **Test** after fixing it |
+| No alert emails arrive | Check the recipients and ticked events under Email alerts, use **Send a test email**, and look in spam. If the page says email is not set up, the server's email settings are missing |
+| WhatsApp shows Unreachable or not connected | Check the gateway is running and the phone is still linked (scan the QR code again in WA-AKG), then **Test connection** |
+| WhatsApp messages get no reply | Use **Test connection**. If it fails, the gateway cannot reach OpenFrontDesk: check the address shown under "Gateway sends to" |
 | "Can't reach the API" | The service is unavailable or your connection dropped. Try again in a moment |
 | Integrations or Settings are read-only | Only workspace owners and admins can change them |

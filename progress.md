@@ -345,3 +345,30 @@ OTel/Langfuse, and telephony go-live (Telnyx/Twilio account + number).
   server from writing AGENTS.md and CLAUDE.md.
 - Local dev: the API host port moved from 8080 to 8081 because a Windows service (MTAgentService) now holds
   8080; `apps/web/.env.local` points at 8081.
+
+### 2026-09-28 (email alerts, guided n8n setup, WhatsApp channel)
+- **Email alerts** (`services/notifications.py`): per-workspace recipients and events (leads, bookings, call
+  summaries), sent from the same committed-event pipeline as webhooks, with dates in the workspace time zone.
+  Dashboard panel with a test button and a clear notice when the server has no SMTP.
+- **Connect n8n** (`services/n8n_templates.py`): pick a template and an n8n address; the API creates the
+  webhook with a unique path and returns the workflow with the secret and path filled in (shown once). The
+  API image now ships `integrations/`.
+- **WhatsApp channel** via a self-hosted WA-AKG gateway (researched from its source: Baileys-based, MIT,
+  signed webhooks `X-Webhook-Signature: sha256=HMAC(body)`, `X-API-Key` auth). New tables
+  `whatsapp_connection` (gateway key encrypted with a SECRET_KEY-derived Fernet key) and `channel_message`.
+  Connect registers our webhook on the gateway; inbound events are signature-checked, acknowledged at once
+  and answered in the background with the widget's chat brain plus per-customer memory (10 turns, 24 h),
+  de-duplicated, replay-protected, rate-limited per sender. Dashboard page with status, two-way connection
+  test and conversations. Marked clearly as unofficial; Meta's official API can be added as a second
+  provider. docs/21-whatsapp.md.
+- Fixes found while testing: message log order (Postgres `now()` is the transaction start, so a question
+  and its answer tied; explicit timestamps now), dashboard panels overflowing on phones (grid items now
+  shrink), and a test helper that stacked mocks.
+- **Verified:** 94 tests; Node run of the personalised n8n signature check (valid passes, wrong secret and
+  replay rejected); end to end against a test API with Mailpit and a gateway implementing WA-AKG's API
+  (alerts delivered with local times, workflow file correct, WhatsApp connect/test/answer/memory/duplicate/
+  voice-note/forged-signature/disconnect all as designed); a downloaded workflow imported into a throwaway
+  n8n 2.40 accepted real events; new pages checked in both themes at 1440 and 390 px. Linking a real phone
+  by QR is the remaining manual step.
+- Local notes: Docker Desktop keeps leaving stale socket files after unclean stops; recovered each time by
+  moving them aside.
